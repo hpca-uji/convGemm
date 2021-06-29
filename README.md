@@ -1,3 +1,3 @@
 # convGemmNhwc
 
-Convolution using implicit gemm for matrices in NHWC format
+Convolution using implicit GEMM for matrices in NHWC format
