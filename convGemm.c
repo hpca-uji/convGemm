@@ -22,31 +22,66 @@ int alloc_pack_buffs(float** Ac_pack, float** Bc_pack)
     return 0;
 }
 
-void im2row_nhwc(float *rows, const float *x, int n, int h, int w, int c, int hh, int ww, int kh, int kw, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
+void im2row_nhwc(float *rows, const float *in, int n, int h, int w, int c, int hh, int ww, int kh, int kw, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation, int start_row, int end_row, int start_col, int end_col)
 {
+#if 0
     // #pragma omp parallel for
     for (int nn = 0; nn < n; nn++)
-        for (int xx = 0; xx < hh; xx++)
-            for (int yy = 0; yy < ww; yy++) {
-                int row = nn * hh * ww + xx * ww + yy;
+        for (int i = 0; i < hh; i++)
+            for (int j = 0; j < ww; j++) {
+                int row = nn * hh * ww + i * ww + j;
                 for (int cc = 0; cc < c; cc++)
-                    for (int ii = 0; ii < kh; ii++) {
-                        int x_x = vstride * xx + vdilation * ii - vpadding;
-                        if (0 <= x_x && x_x < h)
-                            for (int jj = 0; jj < kw; jj++) {
-                                int x_y = hstride * yy + hdilation * jj - hpadding;
-                                if (0 <= x_y && x_y < w) {
-                                    int col = cc * kh * kw + ii * kw + jj;
+                    for (int ki = 0; ki < kh; ki++) {
+                        int x = vstride * i + vdilation * ki - vpadding;
+                        if (0 <= x && x < h)
+                            for (int kj = 0; kj < kw; kj++) {
+                                int y = hstride * j + hdilation * kj - hpadding;
+                                if (0 <= y && y < w) {
+                                    int col = cc * kh * kw + ki * kw + kj;
                                     // rows[row, col] = x[nn, x_x, x_y, cc]
-                                    rows[row * c * kh * kw + col] = x[
-                                        nn  * h * w * c +
-                                        x_x     * w * c +
-                                        x_y         * c +
+                                    rows[row * c * kh * kw + col] = in[
+                                        nn * h * w * c +
+                                        x      * w * c +
+                                        y          * c +
                                         cc];
                                 }
                             }
                     }
             }
+#else
+    // starting values for the first row
+    // int row = (nn * hh + i) * ww + j;
+    int j  =  start_row % ww;
+    int i  = (start_row / ww) % hh;
+    int nn = (start_row / ww) / hh;
+    // starting values for the first column
+    // int col = (cc * kh + ki) * kw + kj;
+    int start_kj =  start_col % kw;
+    int start_ki = (start_col / kw) % kh;
+    int start_c  = (start_col / kw) / kh;
+
+    // #pragma omp parallel for
+    for (int row = start_row; row < end_row; row++) {
+        for (int col = start_col, cc = start_c, ki = start_ki, kj = start_kj; col < end_col; col++) {
+            int x = vstride * i + vdilation * ki - vpadding;
+            int y = hstride * j + hdilation * kj - hpadding;
+            if (0 <= x && x < h && 0 <= y && y < w) {
+                // rows[row, col] = x[nn, x_x, x_y, cc]
+                rows[row * c * kh * kw + col] = in[
+                    nn * h * w * c +
+                    x      * w * c +
+                    y          * c +
+                    cc];
+            } else rows[row * c * kh * kw + col] = 0;
+            kj++; if (kj >= kw) { kj = 0;
+            ki++; if (ki >= kh) { ki = 0;
+            cc++; } }
+        }
+        j++; if (j >= ww) { j = 0;
+        i++; if (i >= hh) { i = 0;
+        nn++; } }
+    }
+#endif
 }
 
 void sconvGemmNHWC(char trans,
@@ -75,7 +110,7 @@ void sconvGemmNHWC(char trans,
     // printf("sconvGemmNHWC trans=%c  bias_vector=", trans);
     // if (bias_vector) for (int i = 0; i < kn; i++) printf(" %g", bias_vector[i]);
     // printf("\n");
-    im2row_nhwc(aux, x, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+    im2row_nhwc(aux, x, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, 0, ho * wo * b, 0, c * kh * kw);
     if (trans == 'N') {
         sgemm('N', 'N', kn, ho * wo * b, kh * kw * c, alpha, in, kn, aux, kh * kw * c, beta, out, kn);
         if (bias_vector) {

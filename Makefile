@@ -1,5 +1,5 @@
 CC       = gcc
-CFLAGS   = -O3 # -fPIC
+CFLAGS   = -O3 -Wall # -fPIC
 LINKER  = gcc
 LFLAGS = -lm -lblas
 
