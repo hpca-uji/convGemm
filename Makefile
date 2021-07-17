@@ -1,15 +1,18 @@
 CC       = gcc
-CFLAGS   = -O3 -Wall # -fPIC
+CFLAGS   = -fopenmp -O3 -Wall # -fPIC
 LINKER  = gcc
-LFLAGS = -lm -lblas
+LFLAGS = -fopenmp -lm -lblas
 
 default: libconvGemm.so
 
-libconvGemm.so: convGemm.o
+libconvGemm.so: convGemm.o gemm_blis.o gemm_nhwc.o im2row_nhwc.o
 	$(LINKER) $(LFLAGS) -shared -o $@ $^
 
-%.o: %.c
+%.o: %.c *.h
 	$(CC) $(CFLAGS) -c $<
+
+tags: *.c *.h
+	ctags $^
 
 #-----------------------------------
 
