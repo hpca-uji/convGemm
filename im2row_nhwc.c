@@ -55,44 +55,44 @@ void pack_CB_nhwc( char orderM, char transM, int mc, int nc, float *M, int ldM, 
             }
         }
     } else {
-        /* int start_y  =  (start_i) % owidth;
+        int start_y  =  (start_i) % owidth;
         int start_x  = ((start_i) / owidth) % oheight;
-        int start_b  = ((start_i) / owidth) / oheight; */
+        int start_b  = ((start_i) / owidth) / oheight;
         #pragma omp parallel for
         for (int j = 0; j < nc; j += RR) {
             int k = j * mc;
             int nr = min(nc - j, RR);
-            /* int y = start_y;
+            int y = start_y;
             int x = start_x;
             int b = start_b;
             int start_ky =  (start_j + j) % kwidth;
             int start_kx = ((start_j + j) / kwidth) % kheight;
-            int start_c  = ((start_j + j) / kwidth) / kheight; */
+            int start_c  = ((start_j + j) / kwidth) / kheight;
             for (int i = 0; i < mc; i++) {
-                /* int ky = start_ky;
+                int ky = start_ky;
                 int kx = start_kx;
-                int c  = start_c; */
+                int c  = start_c;
                 for (int jj = 0; jj < nr; jj++) {
-                    Mc[k] = Mcol(j+jj,i);
-                    /* int ix = vstride * x + vdilation * kx - vpadding;
+                    // Mc[k] = Mcol(j+jj,i);
+                    int ix = vstride * x + vdilation * kx - vpadding;
                     int iy = hstride * y + hdilation * ky - hpadding;
                     if (0 <= ix && ix < height && 0 <= iy && iy < width) {
                         Mc[k] = in[b * height * width * channel +
                                    ix         * width * channel +
                                    iy                 * channel +
                                    c];
-                    } else Mc[k] = 0.0;*/
+                    } else Mc[k] = 0.0;
                     k++;
-                    /* // next kernel position
+                    // next kernel position
                     ky++; if (ky >= kwidth) { ky = 0;
                     kx++; if (kx >= kheight) { kx = 0;
-                    c++; } } */
+                    c++; } }
                 }
                 k += (RR - nr);
-                /* // next pixel position
+                // next pixel position
                 y++; if (y >= owidth) { y = 0;
                 x++; if (x >= oheight) { x = 0;
-                b++; } } */
+                b++; } }
             }
         }
     }

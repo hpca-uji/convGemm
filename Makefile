@@ -11,7 +11,7 @@ libconvGemm.so: convGemm.o gemm_blis.o gemm_nhwc.o im2row_nhwc.o
 
 runtest: test test.dat
 	rm test.out
-	while read line; do echo $$line | tee -a test.out; ./test $$line | tee -a test.out; done < test.dat
+	while read line; do echo -n $$line | tee -a test.out; ./test $$line | tee -a test.out; done < test.dat
 
 test.dat: test.pl test.txt
 	perl $^ > $@

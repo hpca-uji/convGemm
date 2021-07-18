@@ -28,7 +28,7 @@ bool check(int n, float *a, float *b)
     for (int i = 0; i < n; i++) {
         float d = fabsf((a[i] - b[i]) / a[i]);
         if (d > 1e-5) {
-            printf("    %d %e %e", i, a[i], b[i]);
+            printf(": %d %e %e", i, a[i], b[i]);
             return false;
         }
     }
@@ -77,28 +77,36 @@ int main(int argc, char *argv[])
     gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, aux, kh * kw * c, beta, out_nhwc, kn, ac_pack, bc_pack, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
 
     if (!check(kn * ho * wo * b, out_gemm, out_blis)) {
-        printf(": error in gemm_blis 'N'\n");
+        printf(" error in gemm_blis 'N'\n");
         return 1;
     }
     if (!check(kn * ho * wo * b, out_gemm, out_nhwc)) {
-        printf(": error in gemm_nhwc 'N'\n");
+        printf(" error in gemm_nhwc 'N'\n");
         return 2;
     }
 
-    sgemm(                          'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, kernel, kn, aux, kh * kw * c, beta, out_gemm, kn);
-    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, kernel, kn, aux, kh * kw * c, beta, out_blis, kn, ac_pack, bc_pack);
-    gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, kernel, kn, aux, kh * kw * c, beta, out_nhwc, kn, ac_pack, bc_pack, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+    sgemm(                          'N', 'T', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, aux, ho * wo * b, beta, out_gemm, kn);
+    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, aux, ho * wo * b, beta, out_blis, kn, ac_pack, bc_pack);
+    gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'T', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, aux, ho * wo * b, beta, out_nhwc, kn, ac_pack, bc_pack, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
 
-    if (!check(kn * ho * wo * b, out_gemm, out_blis)) {
-        printf(": error in gemm_blis 'T'\n");
+    float *trans_gemm = random_alloc(c * kh * kw * kn);
+    float *trans_blis = random_alloc(c * kh * kw * kn);
+    float *trans_nhwc = random_alloc(c * kh * kw * kn);
+
+    sgemm(                          'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, out_gemm, kn, aux, kh * kw * c, beta, trans_gemm, kn);
+    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, out_gemm, kn, aux, kh * kw * c, beta, trans_blis, kn, ac_pack, bc_pack);
+    gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, out_gemm, kn, NULL, kh * kw * c, beta, trans_nhwc, kn, ac_pack, bc_pack, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+
+    if (!check(c * kh * kw * kn, trans_gemm, trans_blis)) {
+        printf(" error in gemm_blis 'T'\n");
         return 3;
     }
-    if (!check(kn * ho * wo * b, out_gemm, out_nhwc)) {
-        printf(": error in gemm_nhwc 'T'\n");
+    if (!check(c * kh * kw * kn, trans_gemm, trans_nhwc)) {
+        printf(" error in gemm_nhwc 'T'\n");
         return 4;
     }
 
-    printf("    Ok\n");
+    printf(": Ok\n");
 
     return 0;
 }

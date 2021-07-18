@@ -1,7 +1,37 @@
+/* 
+   GEMM FLAVOURS
+
+   -----
+
+   GEMM FLAVOURS is a family of algorithms for matrix multiplication based
+   on the BLIS approach for this operation: https://github.com/flame/blis
+
+   -----
+
+   This program is free software: you can redistribute it and/or modify it under
+   the terms of the GNU General Public License as published by the Free Software
+   Foundation, either version 3 of the License, or (at your option) any later
+   version.
+
+   This program is distributed in the hope that it will be useful, but WITHOUT
+   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+   FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+   You should have received a copy of the GNU General Public License along with
+   this program. If not, see <http://www.gnu.org/licenses/>.
+
+   -----
+
+   author    = "Enrique S. Quintana-Orti"
+   contact   = "quintana@disca.upv.es"
+   copyright = "Copyright 2021, Universitat Politecnica de Valencia"
+   license   = "GPLv3"
+   status    = "Production"
+   version   = "1.1"
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <assert.h>
+// #include <arm_neon.h>
 
 #include "blis.h"
 #include "gemm_blis.h"
@@ -20,22 +50,31 @@
 #define Crow(a1,a2)  C[ (a1)*(ldC)+(a2) ]
 #define Mrow(a1,a2)  M[ (a1)*(ldM)+(a2) ]
 
+int print_matrix(char *, char, int, int, float *, int);
+
 void gemm_nhwc_B3A2C0( char orderA, char orderB, char orderC,
-                       char transA, char transB,
-                       int m, int n, int k,
-                       float alpha, float *A, int ldA,
-                                    float *B, int ldB,
-                       float beta,  float *C, int ldC,
+                       char transA, char transB, 
+                       int m, int n, int k, 
+                       float alpha, float *A, int ldA, 
+		                    float *B, int ldB, 
+		       float beta,  float *C, int ldC, 
                        float *Ac, float *Bc,
                        float *in, int b, int h, int w, int c, int ho, int wo, int kh, int kw, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
 {
-  int    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr;
-  float  zero = 0.0, one = 1.0, betaI;
+  int    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr; 
+  float  zero = 0.0, one = 1.0, betaI; 
   float  *Aptr, *Bptr, *Cptr;
-/*
+/* 
   Computes the GEMM C := beta * C + alpha * A * B
   following the BLIS approach
 */
+
+/*
+*     Test the input parameters.
+*/
+  #if defined(CHECK)
+  #include "check_params.h"
+  #endif
 
   // Quick return if possible
   if ( (m==0)||(n==0)||(((alpha==zero)||(k==0))&&(beta==one)) )
@@ -44,39 +83,21 @@ void gemm_nhwc_B3A2C0( char orderA, char orderB, char orderC,
   #include "quick_gemm.h"
 
   for ( jc=0; jc<n; jc+=NC ) {
-    nc = min(n-jc, NC);
+    nc = min(n-jc, NC); 
 
     for ( pc=0; pc<k; pc+=KC ) {
-      kc = min(k-pc, KC);
+      kc = min(k-pc, KC); 
 
-      if ( (transB=='N')&&(orderB=='C') ) {
-        // printf("%d %d %d %d\n", k, n, kh * kw * c, ho * wo * b);
-        Bptr = &Bcol(pc,jc); // B[pc+jc*ldB]
-        pack_CB_nhwc( orderB, transB, kc, nc, Bptr, ldB, Bc, NR, in, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, pc, jc);
-#if 0
-        float *aux = malloc(kc * nc * sizeof(float));
-        printf("im2row %d %d %d\n", kc, nc, NR);
-        im2row_nhwc('N', aux, kc, in, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, jc, jc + nc, pc, pc + kc);
-        if (kc == 384)
-        for (int j = 0; j < nc; j++) {
-            for (int i = 0; i < kc; i++) {
-                float a = Bcol(pc+i,jc+j);
-                // float b = aux[j * kc + i];
-                float b = Bptr[j * kc + i];
-                /* float d = fabs(a - b);
-                if (d > 1e-5) */ printf("%d %d %e %e\n", pc+i, jc+j, a, b);
-            }
-        }
-        free(aux);
-#endif
-      } else if ( (transB=='T')&&(orderB=='C') ) {
-        Bptr = &Bcol(jc,pc); // B[pc*ldB+jc]
-        pack_CB_nhwc( orderB, transB, kc, nc, Bptr, ldB, Bc, NR, in, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, pc, jc);
-      } else { if ( (transB=='N')&&(orderB=='R') )
-        Bptr = &Brow(pc,jc); // B[pc*ldB+jc]
+      if ( (transB=='N')&&(orderB=='C') )
+        Bptr = &Bcol(pc,jc);
+      else if ( (transB=='N')&&(orderB=='R') )
+        Bptr = &Brow(pc,jc);
+      else if ( (transB=='T')&&(orderB=='C') )
+        Bptr = &Bcol(jc,pc);
       else
-        Bptr = &Brow(jc,pc); // B[pc+jc*ldB]
-      pack_CB( orderB, transB, kc, nc, Bptr, ldB, Bc, NR); }
+        Bptr = &Brow(jc,pc);
+      // pack_CB( orderB, transB, kc, nc, Bptr, ldB, Bc, NR);
+      pack_CB_nhwc( orderB, transB, kc, nc, Bptr, ldB, Bc, NR, in, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, pc, jc);
 
       if ( pc==0 )
         betaI = beta;
@@ -84,7 +105,7 @@ void gemm_nhwc_B3A2C0( char orderA, char orderB, char orderC,
         betaI = one;
 
       for ( ic=0; ic<m; ic+=MC ) {
-        mc = min(m-ic, MC);
+        mc = min(m-ic, MC); 
 
         if ( (transA=='N')&&(orderA=='C') )
           Aptr = &Acol(ic,pc);
@@ -95,19 +116,19 @@ void gemm_nhwc_B3A2C0( char orderA, char orderB, char orderC,
         else
           Aptr = &Arow(pc,ic);
         pack_RB( orderA, transA, mc, kc, Aptr, ldA, Ac, MR);
-
+        
         for ( jr=0; jr<nc; jr+=NR ) {
-          nr = min(nc-jr, NR);
+          nr = min(nc-jr, NR); 
 
           for ( ir=0; ir<mc; ir+=MR ) {
-            mr = min(mc-ir, MR);
+            mr = min(mc-ir, MR); 
 
             if ( orderC=='C' )
               Cptr = &Ccol(ic+ir,jc+jr);
             else
               Cptr = &Crow(ic+ir,jc+jr);
             gemm_base_Cresident( orderC, mr, nr, kc, alpha, &Ac[ir*kc], MR, &Bc[jr*kc], NR, betaI, Cptr, ldC );
-            // gemm_microkernel_Cresident_neon_4x4_prefetch( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC );
+	    // gemm_microkernel_Cresident_neon_4x4_prefetch( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC );
           }
         }
       }
