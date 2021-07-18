@@ -283,7 +283,7 @@ void gemm_base_Cresident( char orderC, int m, int n, int k,
   Replace with specialized micro-kernel where C-->m x n is resident in registers
 */
   int    i, j, p;
-  float  zero = 0.0, tmp;
+  float  zero = 0.0, one = 1.0, tmp;
 
   for ( j=0; j<n; j++ )
     for ( i=0; i<m; i++ ) {

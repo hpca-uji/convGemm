@@ -51,7 +51,7 @@ void gemm_nhwc_B3A2C0( char orderA, char orderB, char orderC,
 
       if ( (transB=='N')&&(orderB=='C') ) {
         // printf("%d %d %d %d\n", k, n, kh * kw * c, ho * wo * b);
-        Bptr = &Bcol(pc,jc);
+        Bptr = &Bcol(pc,jc); // B[pc+jc*ldB]
         pack_CB_nhwc( orderB, transB, kc, nc, Bptr, ldB, Bc, NR, in, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, pc, jc);
 #if 0
         float *aux = malloc(kc * nc * sizeof(float));
@@ -69,12 +69,13 @@ void gemm_nhwc_B3A2C0( char orderA, char orderB, char orderC,
         }
         free(aux);
 #endif
+      } else if ( (transB=='T')&&(orderB=='C') ) {
+        Bptr = &Bcol(jc,pc); // B[pc*ldB+jc]
+        pack_CB_nhwc( orderB, transB, kc, nc, Bptr, ldB, Bc, NR, in, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, pc, jc);
       } else { if ( (transB=='N')&&(orderB=='R') )
-        Bptr = &Brow(pc,jc);
-      else if ( (transB=='T')&&(orderB=='C') )
-        Bptr = &Bcol(jc,pc);
+        Bptr = &Brow(pc,jc); // B[pc*ldB+jc]
       else
-        Bptr = &Brow(jc,pc);
+        Bptr = &Brow(jc,pc); // B[pc+jc*ldB]
       pack_CB( orderB, transB, kc, nc, Bptr, ldB, Bc, NR); }
 
       if ( pc==0 )
