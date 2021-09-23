@@ -25,7 +25,7 @@ test: test.o convGemm.o gemm_blis.o gemm_nhwc.o im2row_nhwc.o
 	$(LINKER) -o $@ $^ $(LFLAGS)
 
 test_gemm: test_gemm.o gemm_blis.o
-	$(LINKER) $(LFLAGS) -o $@ $^
+	$(LINKER) -o $@ $^ $(LFLAGS)
 
 %.o: %.c *.h
 	$(CC) $(CFLAGS) -c $<
