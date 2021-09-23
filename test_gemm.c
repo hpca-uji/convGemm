@@ -12,19 +12,11 @@ static inline void sgemm(char transa, char transb, int m, int n, int k, float al
     sgemm_(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
 }
 
-static inline double get_time()
-{
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-    return ts.tv_sec + ts.tv_nsec * 1e-9;
-}
-
 void fill_rand(float *a, int n)
 {
     for (int i = 0; i < n; i++)
         a[i] = rand() * 1.0 / RAND_MAX;
 }
-
 
 int main(int argc, char *argv[])
 {
@@ -80,6 +72,7 @@ int main(int argc, char *argv[])
         fill_rand(B, k * n);
         double t1 = get_time();
         sgemm('N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, Cref, m);
+        t_pack = 0.0, t_kernel = 0.0, t_generic = 0.0;
         double t2 = get_time();
         gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C, m, Ac, Bc, cntx);
         double t3 = get_time();
@@ -89,7 +82,8 @@ int main(int argc, char *argv[])
             float d = fabs(Cref[i] - C[i]);
             if (d > maxdiff) maxdiff = d;
         }
-        printf("maxdiff = %e tblas = %e tblis = %e\n", maxdiff, t2 - t1, t3 - t2);
+        printf("maxdiff = %e t_blas = %e t_blis = %e\n", maxdiff, t2 - t1, t3 - t2);
+        printf("t_pack = %e t_kernel = %e t_generic %e\n", t_pack, t_kernel, t_generic);
     }
 
     return 0;

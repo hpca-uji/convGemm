@@ -10,13 +10,6 @@
 #include "gemm_nhwc.h"
 #include "im2row_nhwc.h"
 
-static inline double get_time()
-{
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-    return ts.tv_sec + ts.tv_nsec * 1e-9;
-}
-
 float *random_alloc(int n)
 {
     float *a = malloc(n * sizeof(float));

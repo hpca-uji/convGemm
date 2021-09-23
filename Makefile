@@ -4,9 +4,9 @@ BLIS_INC = $(BLIS_DIR)/include/$(BLIS_ARCH)
 BLIS_LIB = $(BLIS_DIR)/lib/$(BLIS_ARCH)
 
 CC     = gcc
-CFLAGS = -fopenmp -O3 -I$(BLIS_INC) # -fPIC -Wall
+CFLAGS = -fPIC -fopenmp -O3 -I$(BLIS_INC) # -fPIC -Wall
 LINKER = gcc
-LFLAGS = -fopenmp -lm -lblis -L$(BLIS_LIB) -Wl,-rpath=$(BLIS_LIB)
+LFLAGS = -fPIC -fopenmp -lm -lblis -L$(BLIS_LIB) -Wl,-rpath=$(BLIS_LIB)
 
 default: libconvGemm.so test test_gemm
 

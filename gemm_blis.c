@@ -51,6 +51,8 @@
 
 int print_matrix(char *, char, int, int, float *, int);
 
+double t_pack = 0.0, t_kernel = 0.0, t_generic = 0.0;
+
 void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
                        char transA, char transB, 
                        int m, int n, int k, 
@@ -101,7 +103,9 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
         Bptr = &Bcol(jc,pc);
       else
         Bptr = &Brow(jc,pc);
+      double t1 = get_time();
       pack_CB( orderB, transB, kc, nc, Bptr, ldB, Bc, NR);
+      double t2 = get_time(); t_pack += t2 - t1;
 
       if ( pc==0 )
         betaI = beta;
@@ -119,7 +123,9 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
           Aptr = &Acol(pc,ic);
         else
           Aptr = &Arow(pc,ic);
+        double t1 = get_time();
         pack_RB( orderA, transA, mc, kc, Aptr, ldA, Ac, MR);
+        double t2 = get_time(); t_pack += t2 - t1;
         
         for ( jr=0; jr<nc; jr+=NR ) {
           nr = min(nc-jr, NR); 
@@ -131,11 +137,16 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
               Cptr = &Ccol(ic+ir,jc+jr);
             else
               Cptr = &Crow(ic+ir,jc+jr);
-            if (nr == NR && mr == MR)
+            if (nr == NR && mr == MR) {
+              double t1 = get_time();
               gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &betaI, Cptr, 1, ldC, NULL, cntx);
-            else
+              double t2 = get_time(); t_kernel += t2 - t1;
+            } else {
+              double t1 = get_time();
               gemm_base_Cresident( orderC, mr, nr, kc, alpha, &Ac[ir*kc], MR, &Bc[jr*kc], NR, betaI, Cptr, ldC );
 	    // gemm_microkernel_Cresident_neon_4x4_prefetch( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC );
+              double t2 = get_time(); t_generic += t2 - t1;
+            }
           }
         }
       }
