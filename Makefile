@@ -8,7 +8,7 @@ CFLAGS = -fopenmp -O3 -I$(BLIS_INC) # -fPIC -Wall
 LINKER = gcc
 LFLAGS = -fopenmp -lm -L$(BLIS_LIB) -Wl,-rpath=$(BLIS_LIB) -lblis
 
-default: libconvGemm.so test
+default: libconvGemm.so test test_gemm
 
 libconvGemm.so: convGemm.o gemm_blis.o gemm_nhwc.o im2row_nhwc.o
 	$(LINKER) -shared -o $@ $^ $(LFLAGS)
@@ -23,6 +23,9 @@ test.dat: test.pl test.txt
 
 test: test.o convGemm.o gemm_blis.o gemm_nhwc.o im2row_nhwc.o
 	$(LINKER) -o $@ $^ $(LFLAGS)
+
+test_gemm: test_gemm.o gemm_blis.o
+	$(LINKER) $(LFLAGS) -o $@ $^
 
 %.o: %.c *.h
 	$(CC) $(CFLAGS) -c $<
