@@ -33,7 +33,7 @@
 #include <stdlib.h>
 // #include <arm_neon.h>
 
-#include "blis.h"
+#include <blis.h>
 #include "gemm_blis.h"
 
 #define min(a,b) (((a)<(b))?(a):(b))
@@ -57,10 +57,18 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
                        float alpha, float *A, int ldA, 
 		                    float *B, int ldB, 
 		       float beta,  float *C, int ldC, 
-		       float *Ac, float *Bc ){
+		       float *Ac, float *Bc, cntx_t *cntx ){
   int    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr; 
   float  zero = 0.0, one = 1.0, betaI; 
   float  *Aptr, *Bptr, *Cptr;
+
+  sgemm_ukr_ft gemm_kernel = bli_cntx_get_l3_nat_ukr_dt(BLIS_FLOAT, BLIS_GEMM, cntx);
+  int MR = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MR, cntx);
+  int NR = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NR, cntx);
+  int NC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NC, cntx);
+  int MC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MC, cntx);
+  int KC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_KC, cntx);
+
 /* 
   Computes the GEMM C := beta * C + alpha * A * B
   following the BLIS approach
@@ -123,7 +131,10 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
               Cptr = &Ccol(ic+ir,jc+jr);
             else
               Cptr = &Crow(ic+ir,jc+jr);
-            gemm_base_Cresident( orderC, mr, nr, kc, alpha, &Ac[ir*kc], MR, &Bc[jr*kc], NR, betaI, Cptr, ldC );
+            if (nr == NR && mr == MR)
+              gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &betaI, Cptr, 1, ldC, NULL, cntx);
+            else
+              gemm_base_Cresident( orderC, mr, nr, kc, alpha, &Ac[ir*kc], MR, &Bc[jr*kc], NR, betaI, Cptr, ldC );
 	    // gemm_microkernel_Cresident_neon_4x4_prefetch( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC );
           }
         }
