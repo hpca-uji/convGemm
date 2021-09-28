@@ -51,7 +51,14 @@
 
 int print_matrix(char *, char, int, int, float *, int);
 
+#ifdef BENCHMARK
 double t_pack = 0.0, t_kernel = 0.0, t_generic = 0.0;
+#define BEGIN_TIMER { double t1 = get_time();
+#define END_TIMER(t) double t2 = get_time(); t += t2 - t1; }
+#else
+#define BEGIN_TIMER
+#define END_TIMER(t)
+#endif
 
 void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
                        char transA, char transB, 
@@ -59,7 +66,7 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
                        float alpha, float *A, int ldA, 
 		                    float *B, int ldB, 
 		       float beta,  float *C, int ldC, 
-		       float *Ac, float *Bc, cntx_t *cntx ){
+		       float *Ac, float *Bc, float *Cc, cntx_t *cntx ){
   int    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr; 
   float  zero = 0.0, one = 1.0, betaI; 
   float  *Aptr, *Bptr, *Cptr;
@@ -103,9 +110,9 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
         Bptr = &Bcol(jc,pc);
       else
         Bptr = &Brow(jc,pc);
-      double t1 = get_time();
+      BEGIN_TIMER
       pack_CB( orderB, transB, kc, nc, Bptr, ldB, Bc, NR);
-      double t2 = get_time(); t_pack += t2 - t1;
+      END_TIMER(t_pack)
 
       if ( pc==0 )
         betaI = beta;
@@ -123,9 +130,9 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
           Aptr = &Acol(pc,ic);
         else
           Aptr = &Arow(pc,ic);
-        double t1 = get_time();
+        BEGIN_TIMER
         pack_RB( orderA, transA, mc, kc, Aptr, ldA, Ac, MR);
-        double t2 = get_time(); t_pack += t2 - t1;
+        END_TIMER(t_pack)
         
         for ( jr=0; jr<nc; jr+=NR ) {
           nr = min(nc-jr, NR); 
@@ -138,14 +145,18 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
             else
               Cptr = &Crow(ic+ir,jc+jr);
             if (nr == NR && mr == MR) {
-              double t1 = get_time();
+              BEGIN_TIMER
               gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &betaI, Cptr, 1, ldC, NULL, cntx);
-              double t2 = get_time(); t_kernel += t2 - t1;
+              END_TIMER(t_kernel)
             } else {
-              double t1 = get_time();
-              gemm_base_Cresident( orderC, mr, nr, kc, alpha, &Ac[ir*kc], MR, &Bc[jr*kc], NR, betaI, Cptr, ldC );
+              BEGIN_TIMER
+              gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &zero, Cc, 1, MR, NULL, cntx);
+              for (int j = 0; j < nr; j++)
+                  for (int i = 0; i < mr; i++)
+                      Cptr[j * ldC + i] = betaI * Cptr[j * ldC + i] + Cc[j * MR + i];
+              // gemm_base_Cresident( orderC, mr, nr, kc, alpha, &Ac[ir*kc], MR, &Bc[jr*kc], NR, betaI, Cptr, ldC );
 	    // gemm_microkernel_Cresident_neon_4x4_prefetch( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC );
-              double t2 = get_time(); t_generic += t2 - t1;
+              END_TIMER(t_generic)
             }
           }
         }
@@ -165,10 +176,13 @@ void pack_RB( char orderM, char transM, int mc, int nc, float *M, int ldM, float
     #pragma omp parallel for private(j, ii, rr, k)
     for ( i=0; i<mc; i+=RR ) { 
       k = i*nc;
-      rr = min( mc-i, RR );
+      rr = RR; // min( mc-i, RR );
       for ( j=0; j<nc; j++ ) {
         for ( ii=0; ii<rr; ii++ ) {
-          Mc[k] = Mcol(i+ii,j);
+          if (ii < mc - i)
+            Mc[k] = Mcol(i+ii,j);
+          else
+            Mc[k] = 0.0;
           k++;
         }
         k += (RR-rr);
@@ -178,10 +192,13 @@ void pack_RB( char orderM, char transM, int mc, int nc, float *M, int ldM, float
     #pragma omp parallel for private(j, ii, rr, k)
     for ( i=0; i<mc; i+=RR ) { 
       k = i*nc;
-      rr = min( mc-i, RR );
+      rr = RR; // min( mc-i, RR );
       for ( j=0; j<nc; j++ ) {
         for ( ii=0; ii<rr; ii++ ) {
-           Mc[k] = Mcol(j,i+ii);
+          if (ii < mc - i)
+            Mc[k] = Mcol(j,i+ii);
+          else
+            Mc[k] = 0.0;
           k++;
         }
         k += (RR-rr);
@@ -201,10 +218,13 @@ void pack_CB( char orderM, char transM, int mc, int nc, float *M, int ldM, float
     #pragma omp parallel for private(i, jj, nr, k)
     for ( j=0; j<nc; j+=RR ) { 
       k = j*mc;
-      nr = min( nc-j, RR );
+      nr = RR; // min( nc-j, RR );
       for ( i=0; i<mc; i++ ) {
         for ( jj=0; jj<nr; jj++ ) {
-          Mc[k] = Mcol(i,j+jj);
+          if (jj < nc -j)
+            Mc[k] = Mcol(i,j+jj);
+          else
+            Mc[k] = 0.0;
           k++;
         }
         k += (RR-nr);
@@ -214,10 +234,13 @@ void pack_CB( char orderM, char transM, int mc, int nc, float *M, int ldM, float
     #pragma omp parallel for private(i, jj, nr, k)
     for ( j=0; j<nc; j+=RR ) { 
       k = j*mc;
-      nr = min( nc-j, RR );
+      nr = RR; // min( nc-j, RR );
       for ( i=0; i<mc; i++ ) {
         for ( jj=0; jj<nr; jj++ ) {
-          Mc[k] = Mcol(j+jj,i);
+          if (jj < nc -j)
+            Mc[k] = Mcol(j+jj,i);
+          else
+            Mc[k] = 0.0;
           k++;
         }
         k += (RR-nr);

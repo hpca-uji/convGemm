@@ -8,7 +8,7 @@ static inline double get_time()
 extern double t_pack, t_kernel, t_generic;
 
 void gemm_blis_B3A2C0( char, char, char, char, char, int, int, int, float, float *, int, float *, int, float, float *, int, 
-                       float *, float *, cntx_t* );
+                       float *, float *, float *, cntx_t* );
 void gemm_base_Cresident( char, int, int, int, float, float *, int, float *, int, float, float *, int );
 void pack_RB( char, char, int, int, float *, int, float *, int );
 void pack_CB( char, char, int, int, float *, int, float *, int );

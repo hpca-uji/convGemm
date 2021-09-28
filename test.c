@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
     int KC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_KC, cntx);
     float *ac_pack = aligned_alloc(4096, MC * KC * sizeof(float));
     float *bc_pack = aligned_alloc(4096, KC * NC * sizeof(float));
+    float *cc_pack = aligned_alloc(4096, MC * NC * sizeof(float));
 
     float *image = random_alloc(b * h * w * c);
     float *kernel = random_alloc(kn * kh * kw * c);
@@ -79,7 +80,7 @@ int main(int argc, char *argv[])
     t1 = get_time();
     sgemm(                          'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, aux, kh * kw * c, beta, out_gemm, kn);
     t2 = get_time();
-    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, aux, kh * kw * c, beta, out_blis, kn, ac_pack, bc_pack, cntx);
+    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, aux, kh * kw * c, beta, out_blis, kn, ac_pack, bc_pack, cc_pack, cntx);
     double t3 = get_time();
     gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, NULL, kh * kw * c, beta, out_nhwc, kn, ac_pack, bc_pack, cntx, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
     double t4 = get_time();
@@ -104,7 +105,7 @@ int main(int argc, char *argv[])
     t1 = get_time();
     sgemm(                          'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, out_gemm, kn, aux, kh * kw * c, beta, trans_gemm, kn);
     t2 = get_time();
-    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, out_gemm, kn, aux, kh * kw * c, beta, trans_blis, kn, ac_pack, bc_pack, cntx);
+    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, out_gemm, kn, aux, kh * kw * c, beta, trans_blis, kn, ac_pack, bc_pack, cc_pack, cntx);
     t3 = get_time();
     gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, out_gemm, kn, NULL, kh * kw * c, beta, trans_nhwc, kn, ac_pack, bc_pack, cntx, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
     t4 = get_time();

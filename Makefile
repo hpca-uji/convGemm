@@ -1,10 +1,10 @@
-BLIS_DIR = /home/tomasan/blis
+BLIS_DIR = $(HOME)/github/blis
 BLIS_ARCH = skx
 BLIS_INC = $(BLIS_DIR)/include/$(BLIS_ARCH)
 BLIS_LIB = $(BLIS_DIR)/lib/$(BLIS_ARCH)
 
 CC     = gcc
-CFLAGS = -fPIC -fopenmp -O3 -I$(BLIS_INC) # -Wall
+CFLAGS = -fPIC -fopenmp -O3 -I$(BLIS_INC) # -Wall -DBENCHMARK
 LINKER = gcc
 LFLAGS = -fPIC -fopenmp -lm -L$(BLIS_LIB) -Wl,-rpath=$(BLIS_LIB) -lblis
 
