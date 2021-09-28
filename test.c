@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
     t2 = get_time();
     gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, aux, kh * kw * c, beta, out_blis, kn, ac_pack, bc_pack, cc_pack, cntx);
     double t3 = get_time();
-    gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, NULL, kh * kw * c, beta, out_nhwc, kn, ac_pack, bc_pack, cntx, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+    gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, NULL, kh * kw * c, beta, out_nhwc, kn, ac_pack, bc_pack, cc_pack, cntx, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
     double t4 = get_time();
     double t_gemm = t2 - t1;
     double t_blis = t3 - t2;
@@ -93,10 +93,10 @@ int main(int argc, char *argv[])
         printf(" error in gemm_blis 'N'\n");
         return 1;
     }
-    /* if (!check(kn * ho * wo * b, out_gemm, out_nhwc)) {
+    if (!check(kn * ho * wo * b, out_gemm, out_nhwc)) {
         printf(" error in gemm_nhwc 'N'\n");
         return 2;
-    } */
+    }
 
     float *trans_gemm = random_alloc(c * kh * kw * kn);
     float *trans_blis = random_alloc(c * kh * kw * kn);
@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
     t2 = get_time();
     gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, out_gemm, kn, aux, kh * kw * c, beta, trans_blis, kn, ac_pack, bc_pack, cc_pack, cntx);
     t3 = get_time();
-    gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, out_gemm, kn, NULL, kh * kw * c, beta, trans_nhwc, kn, ac_pack, bc_pack, cntx, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+    gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, out_gemm, kn, NULL, kh * kw * c, beta, trans_nhwc, kn, ac_pack, bc_pack, cc_pack, cntx, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
     t4 = get_time();
     t_gemm = t2 - t1;
     t_blis = t3 - t2;
@@ -118,10 +118,10 @@ int main(int argc, char *argv[])
         printf(" error in gemm_blis 'T'\n");
         return 3;
     }
-    /* if (!check(c * kh * kw * kn, trans_gemm, trans_nhwc)) {
+    if (!check(c * kh * kw * kn, trans_gemm, trans_nhwc)) {
         printf(" error in gemm_nhwc 'T'\n");
         return 4;
-    } */
+    }
 
     printf("\n");
 

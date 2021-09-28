@@ -15,7 +15,7 @@ void sconvGemmNHWC(char trans,
                     unsigned vdilation, unsigned hdilation,
                     float *x, float beta,
                     float *out, float *bias_vector,
-                    float *ac_pack, float *bc_pack);
+                    float *ac_pack, float *bc_pack, float *cc_pack);
 
 void sconvGemmNHWC_back(unsigned kn, unsigned kh, unsigned kw, unsigned c,
                         float alpha, float *weights,

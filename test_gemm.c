@@ -97,5 +97,34 @@ int main(int argc, char *argv[])
         printf("\n");
     }
 
+    for (int i = 0; i < 3; i++) {
+        fill_rand(A, m * k);
+        fill_rand(B, k * n);
+        double t1 = get_time();
+        sgemm('N', 'T', m, n, k, 1.0, A, m, B, n, 0.0, Cref, m);
+#ifdef BENCHMARK
+        t_pack = 0.0, t_kernel = 0.0, t_generic = 0.0;
+#endif
+        double t2 = get_time();
+        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', m, n, k, 1.0, A, m, B, n, 0.0, C, m, Ac, Bc, Cc, cntx);
+        double t3 = get_time();
+
+        float maxdiff = 0.0, cref_diff = 0.0, c_diff = 0.0;
+        for (int i = 0; i < m * n; i++) {
+            float d = fabs(Cref[i] - C[i]);
+            if (d > maxdiff) {
+                maxdiff = d;
+                cref_diff = Cref[i];
+                c_diff = C[i];
+            }
+        }
+        printf("maxdiff = %e ref = %e res = %e\n", maxdiff, cref_diff, c_diff);
+        printf("t_blas = %e t_blis = %e ", t2 - t1, t3 - t2);
+#ifdef BENCHMARK
+        printf("t_pack = %e t_kernel = %e t_generic %e", t_pack, t_kernel, t_generic);
+#endif
+        printf("\n");
+    }
+
     return 0;
 }

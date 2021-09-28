@@ -173,35 +173,37 @@ void pack_RB( char orderM, char transM, int mc, int nc, float *M, int ldM, float
 
   if ( ((transM=='N')&&( orderM=='C'))||
        ((transM=='T')&&( orderM=='R')) )
-    #pragma omp parallel for private(j, ii, rr, k)
+    // #pragma omp parallel for private(j, ii, rr, k)
     for ( i=0; i<mc; i+=RR ) { 
       k = i*nc;
-      rr = RR; // min( mc-i, RR );
+      rr = min( mc-i, RR );
       for ( j=0; j<nc; j++ ) {
         for ( ii=0; ii<rr; ii++ ) {
-          if (ii < mc - i)
-            Mc[k] = Mcol(i+ii,j);
-          else
-            Mc[k] = 0.0;
+          Mc[k] = Mcol(i+ii,j);
           k++;
         }
-        k += (RR-rr);
+        for ( ; ii<RR; ii++ ) {
+          Mc[k] = 0.0;
+          k++;
+        }
+        // k += (RR-rr);
       }
     }
   else
-    #pragma omp parallel for private(j, ii, rr, k)
+    // #pragma omp parallel for private(j, ii, rr, k)
     for ( i=0; i<mc; i+=RR ) { 
       k = i*nc;
-      rr = RR; // min( mc-i, RR );
+      rr = min( mc-i, RR );
       for ( j=0; j<nc; j++ ) {
         for ( ii=0; ii<rr; ii++ ) {
-          if (ii < mc - i)
-            Mc[k] = Mcol(j,i+ii);
-          else
-            Mc[k] = 0.0;
+          Mc[k] = Mcol(j,i+ii);
           k++;
         }
-        k += (RR-rr);
+        for ( ; ii<RR; ii++ ) {
+          Mc[k] = 0.0;
+          k++;
+        }
+        // k += (RR-rr);
       }
     }
 }
@@ -215,35 +217,37 @@ void pack_CB( char orderM, char transM, int mc, int nc, float *M, int ldM, float
   k = 0;
   if ( ((transM=='N')&&( orderM=='C'))||
        ((transM=='T')&&( orderM=='R')) )
-    #pragma omp parallel for private(i, jj, nr, k)
+    // #pragma omp parallel for private(i, jj, nr, k)
     for ( j=0; j<nc; j+=RR ) { 
       k = j*mc;
-      nr = RR; // min( nc-j, RR );
+      nr = min( nc-j, RR );
       for ( i=0; i<mc; i++ ) {
         for ( jj=0; jj<nr; jj++ ) {
-          if (jj < nc -j)
-            Mc[k] = Mcol(i,j+jj);
-          else
-            Mc[k] = 0.0;
+          Mc[k] = Mcol(i,j+jj);
           k++;
         }
-        k += (RR-nr);
+        for ( ; jj<RR; jj++ ) {
+          Mc[k] = 0.0;
+          k++;
+        }
+        // k += (RR-nr);
       }
     }
   else
-    #pragma omp parallel for private(i, jj, nr, k)
+    // #pragma omp parallel for private(i, jj, nr, k)
     for ( j=0; j<nc; j+=RR ) { 
       k = j*mc;
-      nr = RR; // min( nc-j, RR );
+      nr = min( nc-j, RR );
       for ( i=0; i<mc; i++ ) {
         for ( jj=0; jj<nr; jj++ ) {
-          if (jj < nc -j)
-            Mc[k] = Mcol(j+jj,i);
-          else
-            Mc[k] = 0.0;
+          Mc[k] = Mcol(j+jj,i);
           k++;
         }
-        k += (RR-nr);
+        for ( ; jj<RR; jj++ ) {
+          Mc[k] = 0.0;
+          k++;
+        }
+        // k += (RR-nr);
       }
     }
 }

@@ -36,7 +36,7 @@ void sconvGemmNHWC(char trans,
                     unsigned vdilation, unsigned hdilation,
                     float *x, float beta,
                     float *out, float *bias_vector,
-                    float *ac_pack, float *bc_pack)
+                    float *ac_pack, float *bc_pack, float *cc_pack)
 {
     /*
      * computes
@@ -71,7 +71,7 @@ void sconvGemmNHWC(char trans,
     free(aux);
 #else
     if (trans == 'N') {
-        gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, in, kn, NULL, kh * kw * c, beta, out, kn, ac_pack, bc_pack, cntx, x, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+        gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, in, kn, NULL, kh * kw * c, beta, out, kn, ac_pack, bc_pack, cc_pack, cntx, x, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
         if (bias_vector) {
             // #pragma omp parallel for
             for(int j = 0; j < ho * wo * b; j++)
@@ -79,7 +79,7 @@ void sconvGemmNHWC(char trans,
                     out[i + j * kn] += bias_vector[i];
         }
     } else {
-        gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, in, kn, NULL, kh * kw * c, beta, out, kn, ac_pack, bc_pack, cntx, x, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+        gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, in, kn, NULL, kh * kw * c, beta, out, kn, ac_pack, bc_pack, cc_pack, cntx, x, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
     }
 #endif
 }

@@ -17,7 +17,7 @@ void pack_CB_nhwc( char orderM, char transM, int mc, int nc, float *M, int ldM, 
         int start_kx = (start_i / kwidth) % kheight;
         int start_c  = (start_i / kwidth) / kheight;
         #pragma omp parallel for
-        for (int j = 0; j < nc; j += RR ) {
+        for (int j = 0; j < nc; j += RR) {
             int k = j * mc;
             int nr = min(nc - j, RR);
             int ky = start_ky;
@@ -31,7 +31,8 @@ void pack_CB_nhwc( char orderM, char transM, int mc, int nc, float *M, int ldM, 
                 int y = start_y;
                 int x = start_x;
                 int b = start_b;
-                for (int jj=0; jj<nr; jj++ ) {
+                int jj = 0;
+                for (; jj < nr; jj++) {
                     // Mc[k] = Mcol(i,j+jj);
                     int ix = vstride * x + vdilation * kx - vpadding;
                     int iy = hstride * y + hdilation * ky - hpadding;
@@ -47,7 +48,11 @@ void pack_CB_nhwc( char orderM, char transM, int mc, int nc, float *M, int ldM, 
                     x++; if (x >= oheight) { x = 0;
                     b++; } }
                 }
-                k += (RR-nr);
+                for (; jj < RR; jj++) {
+                    Mc[k] = 0.0;
+                    k++;
+                }
+                // k += (RR - nr);
                 // next kernel position
                 ky++; if (ky >= kwidth) { ky = 0;
                 kx++; if (kx >= kheight) { kx = 0;
@@ -72,7 +77,8 @@ void pack_CB_nhwc( char orderM, char transM, int mc, int nc, float *M, int ldM, 
                 int ky = start_ky;
                 int kx = start_kx;
                 int c  = start_c;
-                for (int jj = 0; jj < nr; jj++) {
+                int jj = 0;
+                for (; jj < nr; jj++) {
                     // Mc[k] = Mcol(j+jj,i);
                     int ix = vstride * x + vdilation * kx - vpadding;
                     int iy = hstride * y + hdilation * ky - hpadding;
@@ -88,7 +94,11 @@ void pack_CB_nhwc( char orderM, char transM, int mc, int nc, float *M, int ldM, 
                     kx++; if (kx >= kheight) { kx = 0;
                     c++; } }
                 }
-                k += (RR - nr);
+                for (; jj < RR; jj++) {
+                    Mc[k] = 0.0;
+                    k++;
+                }
+                // k += (RR - nr);
                 // next pixel position
                 y++; if (y >= owidth) { y = 0;
                 x++; if (x >= oheight) { x = 0;
@@ -100,7 +110,7 @@ void pack_CB_nhwc( char orderM, char transM, int mc, int nc, float *M, int ldM, 
 
 void im2row_nhwc(float *rows, int ld, const float *in, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation, int start_row, int end_row, int start_col, int end_col)
 {
-#if 0
+#if 1
     // #pragma omp parallel for
     for (int b = 0; b < batch; b++)
         for (int x = 0; x < oheight; x++)
