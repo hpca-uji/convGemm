@@ -4,7 +4,7 @@ static inline void sgemm(char transa, char transb, int m, int n, int k, float al
     sgemm_(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
 }
 
-int alloc_pack_buffs(float** Ac_pack, float** Bc_pack);
+int alloc_pack_buffs(float** Ac_pack, float** Bc_pack, float** Cc_pack);
 
 void sconvGemmNHWC(char trans,
                     unsigned kn, unsigned kh, unsigned kw, unsigned c,

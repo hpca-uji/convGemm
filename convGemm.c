@@ -8,11 +8,7 @@
 #include "gemm_nhwc.h"
 #include "im2row_nhwc.h"
 
-static cntx_t* cntx;
-static int MR, NR, MC, NC, KC, PACKMR, PACKNR;
-static sgemm_ukr_ft gemm_kernel;
-
-int alloc_pack_buffs(float** Ac_pack, float** Bc_pack)
+int alloc_pack_buffs(float** Ac_pack, float** Bc_pack, float** Cc_pack)
 {
     bli_init();
     cntx_t *cntx = bli_gks_query_cntx();
@@ -22,8 +18,9 @@ int alloc_pack_buffs(float** Ac_pack, float** Bc_pack)
 
     *Ac_pack = aligned_alloc(4096, MC * KC * sizeof(float));
     *Bc_pack = aligned_alloc(4096, KC * NC * sizeof(float));
+    *Cc_pack = aligned_alloc(4096, MC * NC * sizeof(float));
 
-    if(*Ac_pack == NULL || *Bc_pack == NULL) return 1;
+    if(*Ac_pack == NULL || *Bc_pack == NULL || *Cc_pack == NULL) return 1;
     return 0;
 }
 
@@ -70,6 +67,7 @@ void sconvGemmNHWC(char trans,
     }
     free(aux);
 #else
+    cntx_t *cntx = bli_gks_query_cntx();
     if (trans == 'N') {
         gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, in, kn, NULL, kh * kw * c, beta, out, kn, ac_pack, bc_pack, cc_pack, cntx, x, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
         if (bias_vector) {
