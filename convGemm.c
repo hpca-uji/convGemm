@@ -7,6 +7,7 @@
 #include "gemm_blis.h"
 #include "gemm_nhwc.h"
 #include "im2row_nhwc.h"
+#include "im2col_nchw.h"
 
 int alloc_pack_buffs(float** Ac_pack, float** Bc_pack, float** Cc_pack)
 {
@@ -25,7 +26,7 @@ int alloc_pack_buffs(float** Ac_pack, float** Bc_pack, float** Cc_pack)
 }
 
 void sconvGemmNHWC(char trans,
-                    unsigned kn, unsigned kh, unsigned kw, unsigned c,
+                    unsigned c, unsigned kh, unsigned kw, unsigned kn,
                     float alpha, float *in,
                     unsigned b, unsigned h, unsigned w,
                     unsigned vpadding, unsigned hpadding,
@@ -82,32 +83,6 @@ void sconvGemmNHWC(char trans,
 #endif
 }
 
-void row2im_nhwc(const float *rows, float *x, int n, int h, int w, int c, int hh, int ww, int kh, int kw, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
-{
-    // #pragma omp parallel for
-    for (int nn = 0; nn < n; nn++)
-        for (int xx = 0; xx < hh; xx++)
-            for (int yy = 0; yy < ww; yy++) {
-                int row = nn * hh * ww + xx * ww + yy;
-                for (int cc = 0; cc < c; cc++)
-                    for (int ii = 0; ii < kh; ii++) {
-                        int x_x = vstride * xx + vdilation * ii - vpadding;
-                        if (0 <= x_x && x_x < h)
-                            for (int jj = 0; jj < kw; jj++) {
-                                int x_y = hstride * yy + hdilation * jj - hpadding;
-                                if (0 <= x_y && x_y < w) {
-                                    int col = cc * kh * kw + ii * kw + jj;
-                                    // x[nn, x_x, x_y, cc] += rows[row, col]
-                                    x[nn  * h * w * c +
-                                      x_x     * w * c +
-                                      x_y         * c +
-                                      cc] += rows[row * c * kh * kw + col];
-                                }
-                            }
-                    }
-            }
-}
-
 void sconvGemmNHWC_back(unsigned kn, unsigned kh, unsigned kw, unsigned c,
                         float alpha, float *weights,
                         unsigned b, unsigned h, unsigned w,
@@ -127,4 +102,54 @@ void sconvGemmNHWC_back(unsigned kn, unsigned kh, unsigned kw, unsigned c,
     row2im_nhwc(aux, dx, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
 
     free(aux);
+}
+
+void sconvGemmNCHW(float *ref, char trans,
+                    unsigned kn, unsigned c, unsigned kh, unsigned kw,
+                    float alpha, float *in,
+                    unsigned h, unsigned w, unsigned b,
+                    unsigned vpadding, unsigned hpadding,
+                    unsigned hstride, unsigned vstride,
+                    unsigned vdilation, unsigned hdilation,
+                    float *x, float beta,
+                    float *out, float *bias_vector,
+                    float *ac_pack, float *bc_pack, float *cc_pack)
+{
+    int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1;
+    int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
+    float *aux  = (float *) calloc(c * kh * kw * ho * wo * b, sizeof(float));
+    float *aux2 = (float *) calloc(kn * ho * wo * b, sizeof(float));
+    im2col_nchw(aux, x, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+    if (trans == 'N') {
+        sgemm('N', 'N', ho * wo * b, kn, kh * kw * c, alpha, aux, ho * wo * b, in, kh * kw * c, beta, aux2, ho * wo * b);
+        if (bias_vector) { // add bias
+            // #pragma omp parallel for
+            for(int i = 0; i < kn; i++)
+                for(int j = 0; j < ho * wo * b; j++)
+                    aux2[i * ho * wo * b + j] += bias_vector[i];
+        }
+        // transpose first and second dimension
+        for (int i = 0; i < b; i++)
+            for (int j = 0; j < kn; j++)
+                for (int x = 0; x < ho; x++)
+                    for (int y = 0; y < wo; y++)
+                        out[i * kn * ho * wo +
+                            j      * ho * wo +
+                            x           * wo +
+                            y] = aux2[j * b * ho * wo +
+                                      i     * ho * wo +
+                                      x          * wo +
+                                      y];
+        for (int i = 0; i < kn * ho * wo * b; i++)
+            if (fabsf(out[i] - ref[i]) > 1e-4) {
+                printf("%d %e %e\n", i, out[i], ref[i]);
+                abort();
+            }
+    } else {
+        // sgemm('N', 'T', kn, kh * kw * c, ho * wo * b, alpha, in, kn, aux, kh * kw * c, beta, out, kn);
+        // gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, in, kn, aux, kh * kw * c, beta, out, kn, ac_pack, bc_pack);
+        abort();
+    }
+    free(aux);
+    free(aux2);
 }

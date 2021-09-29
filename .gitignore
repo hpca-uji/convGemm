@@ -1,0 +1,7 @@
+*.o
+libconvGemm.so
+test
+test.dat
+test.out
+test_gemm
+tags

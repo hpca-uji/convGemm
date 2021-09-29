@@ -126,8 +126,8 @@ void im2row_nhwc(float *rows, int ld, const float *in, int batch, int height, in
                                     int col = c * kheight * kwidth + kx * kwidth + ky;
                                     rows[row * channel * kheight * kwidth + col] = in[
                                         b * height * width * channel +
-                                        ix      * width * channel +
-                                        iy          * channel +
+                                        ix         * width * channel +
+                                        iy                 * channel +
                                         c];
                                 }
                             }
@@ -155,11 +155,11 @@ void im2row_nhwc(float *rows, int ld, const float *in, int batch, int height, in
             int ix = vstride * x + vdilation * kx - vpadding;
             int iy = hstride * y + hdilation * ky - hpadding;
             if (0 <= ix && ix < height && 0 <= iy && iy < width) {
-                // rows[row, col] = x[b, x_x, x_y, c]
+                // rows[row, col] = in[b, ix, iy, c]
                 rows[row * ld + col] = in[
                     b * height * width * channel +
-                    ix      * width * channel +
-                    iy          * channel +
+                    ix         * width * channel +
+                    iy                 * channel +
                     c];
             } else rows[row * ld + col] = 0;
             ky++; if (ky >= kwidth) { ky = 0;
@@ -173,3 +173,28 @@ void im2row_nhwc(float *rows, int ld, const float *in, int batch, int height, in
 #endif
 }
 
+void row2im_nhwc(const float *rows, float *out, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
+{
+    // #pragma omp parallel for
+    for (int b = 0; b < batch; b++)
+        for (int x = 0; x < oheight; x++)
+            for (int y = 0; y < owidth; y++) {
+                int row = b * oheight * owidth + x * owidth + y;
+                for (int c = 0; c < channel; c++)
+                    for (int kx = 0; kx < kheight; kx++) {
+                        int ix = vstride * x + vdilation * kx - vpadding;
+                        if (0 <= ix && ix < height)
+                            for (int ky = 0; ky < kwidth; ky++) {
+                                int iy = hstride * y + hdilation * ky - hpadding;
+                                if (0 <= iy && iy < width) {
+                                    int col = c * kheight * kwidth + kx * kwidth + ky;
+                                    // out[b, x_x, x_y, cc] += rows[row, col]
+                                    out[b  * height * width * channel +
+                                        ix          * width * channel +
+                                        iy                  * channel +
+                                        c] += rows[row * channel * kheight * kwidth + col];
+                                }
+                            }
+                    }
+            }
+}
