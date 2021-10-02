@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include "im2row_nhwc.h"
+
 #define min(a,b) (((a)<(b))?(a):(b))
 #define Mcol(a1,a2)  M[ (a2)*(ldM)+(a1) ]
-#define Mrow(a1,a2)  M[ (a1)*(ldM)+(a2) ]
 
 void pack_CB_nhwc( char orderM, char transM, int mc, int nc, float *M, int ldM, float *Mc, int RR, float *in, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation, int start_i, int start_j)
 {
@@ -16,7 +17,7 @@ void pack_CB_nhwc( char orderM, char transM, int mc, int nc, float *M, int ldM, 
         int start_ky =  start_i % kwidth;
         int start_kx = (start_i / kwidth) % kheight;
         int start_c  = (start_i / kwidth) / kheight;
-        #pragma omp parallel for
+        // #pragma omp parallel for
         for (int j = 0; j < nc; j += RR) {
             int k = j * mc;
             int nr = min(nc - j, RR);

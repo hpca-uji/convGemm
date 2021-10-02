@@ -7,6 +7,7 @@
 #include "gemm_blis.h"
 #include "gemm_nhwc.h"
 #include "im2row_nhwc.h"
+#include "gemm_nchw.h"
 #include "im2col_nchw.h"
 
 int alloc_pack_buffs(float** Ac_pack, float** Bc_pack, float** Cc_pack)
@@ -115,13 +116,16 @@ void sconvGemmNCHW(float *ref, char trans,
                     float *out, float *bias_vector,
                     float *ac_pack, float *bc_pack, float *cc_pack)
 {
+    cntx_t *cntx = bli_gks_query_cntx();
     int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1;
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
-    float *aux  = (float *) calloc(c * kh * kw * ho * wo * b, sizeof(float));
     float *aux2 = (float *) calloc(kn * ho * wo * b, sizeof(float));
-    im2col_nchw(aux, x, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+#if 0
+    float *aux  = (float *) calloc(c * kh * kw * ho * wo * b, sizeof(float));
+    im2col_nchw(aux, b * ho * wo, x, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, 0, c * kh * kw, 0, b * ho * wo);
     if (trans == 'N') {
         sgemm('N', 'N', ho * wo * b, kn, kh * kw * c, alpha, aux, ho * wo * b, in, kh * kw * c, beta, aux2, ho * wo * b);
+        // gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, aux, ho * wo * b, in, kh * kw * c, beta, aux2, ho * wo * b, ac_pack, bc_pack, cc_pack, cntx);
         if (bias_vector) { // add bias
             // #pragma omp parallel for
             for(int i = 0; i < kn; i++)
@@ -146,10 +150,44 @@ void sconvGemmNCHW(float *ref, char trans,
                 abort();
             }
     } else {
-        // sgemm('N', 'T', kn, kh * kw * c, ho * wo * b, alpha, in, kn, aux, kh * kw * c, beta, out, kn);
-        // gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, in, kn, aux, kh * kw * c, beta, out, kn, ac_pack, bc_pack);
-        abort();
+        /* TODO wrong dimensions
+        sgemm('T', 'N', kh * kw * c, kn, ho * wo * b, alpha, aux, ho * wo * b, in, kh * kw * c, beta, aux2, kh * kw * c);
+        for (int i = 0; i < kh * kw * c * kn; i++)
+            if (fabsf(out[i] - ref[i]) > 1e-4) {
+                printf("%d %e %e\n", i, out[i], ref[i]);
+                abort();
+            } */
     }
     free(aux);
+#else
+    if (trans == 'N') {
+        gemm_nchw_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, NULL, ho * wo * b, in, kh * kw * c, beta, aux2, ho * wo * b, ac_pack, bc_pack, cc_pack, cntx, x, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+        if (bias_vector) { // add bias
+            // #pragma omp parallel for
+            for(int i = 0; i < kn; i++)
+                for(int j = 0; j < ho * wo * b; j++)
+                    aux2[i * ho * wo * b + j] += bias_vector[i];
+        }
+        // transpose first and second dimension
+        for (int i = 0; i < b; i++)
+            for (int j = 0; j < kn; j++)
+                for (int x = 0; x < ho; x++)
+                    for (int y = 0; y < wo; y++)
+                        out[i * kn * ho * wo +
+                            j      * ho * wo +
+                            x           * wo +
+                            y] = aux2[j * b * ho * wo +
+                                      i     * ho * wo +
+                                      x          * wo +
+                                      y];
+        for (int i = 0; i < kn * ho * wo * b; i++)
+            if (fabsf(out[i] - ref[i]) > 1e-4) {
+                printf("%d %e %e\n", i, out[i], ref[i]);
+                abort();
+            }
+    } else {
+        abort(); // TODO not implemented
+    }
+#endif
     free(aux2);
 }
