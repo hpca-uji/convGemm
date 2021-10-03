@@ -65,6 +65,7 @@ int main(int argc, char *argv[])
 
     float *image = random_alloc(b * h * w * c);
     float *kernel = random_alloc(kn * kh * kw * c);
+    float *bias_vector = random_alloc(kn);
 
     int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1;
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
@@ -84,7 +85,7 @@ int main(int argc, char *argv[])
     t2 = get_time();
     gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, aux, kh * kw * c, beta, out_blis, kn, ac_pack, bc_pack, cc_pack, cntx);
     double t3 = get_time();
-    gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, NULL, kh * kw * c, beta, out, kn, ac_pack, bc_pack, cc_pack, cntx, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+    gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, NULL, kh * kw * c, beta, out, kn, ac_pack, bc_pack, cc_pack, cntx, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, bias_vector);
     double t4 = get_time();
     double t_gemm = t2 - t1;
     double t_blis = t3 - t2;
@@ -95,6 +96,9 @@ int main(int argc, char *argv[])
         printf(" error in gemm_blis 'N' NHWC\n");
         return 1;
     }
+    for(int j = 0; j < ho * wo * b; j++) // add bias
+        for(int i = 0; i < kn; i++)
+            out_gemm[i + j * kn] += bias_vector[i];
     if (!check(kn * ho * wo * b, out_gemm, out)) {
         printf(" error in gemm_nhwc 'N' NHWC\n");
         return 2;
@@ -109,7 +113,7 @@ int main(int argc, char *argv[])
     t2 = get_time();
     gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, out_gemm, kn, aux, kh * kw * c, beta, trans_blis, kn, ac_pack, bc_pack, cc_pack, cntx);
     t3 = get_time();
-    gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, out_gemm, kn, NULL, kh * kw * c, beta, trans_nhwc, kn, ac_pack, bc_pack, cc_pack, cntx, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+    gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, out_gemm, kn, NULL, kh * kw * c, beta, trans_nhwc, kn, ac_pack, bc_pack, cc_pack, cntx, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, NULL);
     t4 = get_time();
     t_gemm = t2 - t1;
     t_blis = t3 - t2;
@@ -137,7 +141,7 @@ int main(int argc, char *argv[])
     t2 = get_time();
     gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, aux, ho * wo * b, kernel, kh * kw * c, beta, out_blis, ho * wo * b, ac_pack, bc_pack, cc_pack, cntx);
     t3 = get_time();
-    gemm_nchw_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, NULL, ho * wo * b, kernel, kh * kw * c, beta, out, ho * wo * b, ac_pack, bc_pack, cc_pack, cntx, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+    gemm_nchw_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, NULL, ho * wo * b, kernel, kh * kw * c, beta, out, ho * wo * b, ac_pack, bc_pack, cc_pack, cntx, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, bias_vector);
     t4 = get_time();
     t_gemm = t2 - t1;
     t_blis = t3 - t2;
@@ -148,6 +152,21 @@ int main(int argc, char *argv[])
         printf(" error in gemm_blis 'N' NCHW\n");
         return 1;
     }
+    for(int j = 0; j < kn; j++) // add bias
+        for(int i = 0; i < ho * wo * b; i++)
+            out_gemm[j * ho * wo * b + i] += bias_vector[j];
+    // transpose first and second dimension
+    /* for (int i = 0; i < b; i++)
+        for (int j = 0; j < kn; j++)
+            for (int x = 0; x < ho; x++)
+                for (int y = 0; y < wo; y++)
+                    out_gemm[i * kn * ho * wo +
+                        j      * ho * wo +
+                        x           * wo +
+                        y] = out_blis[j * b * ho * wo +
+                                  i     * ho * wo +
+                                  x          * wo +
+                                  y]; */
     if (!check(kn * ho * wo * b, out_gemm, out)) {
         printf(" error in gemm_nchw 'N' NCHW\n");
         return 2;

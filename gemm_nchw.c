@@ -69,7 +69,8 @@ void gemm_nchw_B3A2C0( char orderA, char orderB, char orderC,
 		                    float *B, int ldB, 
 		       float beta,  float *C, int ldC, 
 		       float *Ac, float *Bc, float *Cc, cntx_t *cntx,
-                       float *in, int b, int h, int w, int c, int ho, int wo, int kh, int kw, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation ){
+                       float *in, int b, int h, int w, int c, int ho, int wo, int kh, int kw, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation, float *bias_vector)
+{
   int    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr; 
   float  zero = 0.0, one = 1.0, betaI; 
   float  *Aptr, *Bptr, *Cptr;
@@ -148,16 +149,23 @@ void gemm_nchw_B3A2C0( char orderA, char orderB, char orderC,
               Cptr = &Ccol(ic+ir,jc+jr);
             else
               Cptr = &Crow(ic+ir,jc+jr);
-            if (nr == NR && mr == MR) {
+            /* if (nr == NR && mr == MR) {
               BEGIN_TIMER
               gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &betaI, Cptr, 1, ldC, NULL, cntx);
               END_TIMER(t_kernel)
-            } else {
+            } else */ {
               BEGIN_TIMER
               gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &zero, Cc, 1, MR, NULL, cntx);
+              END_TIMER(t_kernel)
+              BEGIN_TIMER
+              if (pc == 0 && bias_vector) {
+                for (int j = 0; j < nr; j++)
+                    for (int i = 0; i < mr; i++)
+                        Cc[j * MR + i] += bias_vector[jc + jr + j];
+              }
               for (int j = 0; j < nr; j++)
-                  for (int i = 0; i < mr; i++)
-                      Cptr[j * ldC + i] = betaI * Cptr[j * ldC + i] + Cc[j * MR + i];
+                for (int i = 0; i < mr; i++)
+                    Cptr[j * ldC + i] = betaI * Cptr[j * ldC + i] + Cc[j * MR + i];
               // gemm_base_Cresident( orderC, mr, nr, kc, alpha, &Ac[ir*kc], MR, &Bc[jr*kc], NR, betaI, Cptr, ldC );
 	    // gemm_microkernel_Cresident_neon_4x4_prefetch( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC );
               END_TIMER(t_generic)
