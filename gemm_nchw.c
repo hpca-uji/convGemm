@@ -163,9 +163,13 @@ void gemm_nchw_B3A2C0( char orderA, char orderB, char orderC,
                     for (int i = 0; i < mr; i++)
                         Cc[j * MR + i] += bias_vector[jc + jr + j];
               }
-              for (int j = 0; j < nr; j++)
-                for (int i = 0; i < mr; i++)
-                    Cptr[j * ldC + i] = betaI * Cptr[j * ldC + i] + Cc[j * MR + i];
+              if (transA == 'N') {
+                transpose_nchw(mr, nr, Cc, MR, betaI, C, n /* kn */, ho, wo, ic + ir, jc + jr);
+              } else {
+                for (int j = 0; j < nr; j++)
+                    for (int i = 0; i < mr; i++)
+                        Cptr[j * ldC + i] = betaI * Cptr[j * ldC + i] + Cc[j * MR + i];
+              }
               // gemm_base_Cresident( orderC, mr, nr, kc, alpha, &Ac[ir*kc], MR, &Bc[jr*kc], NR, betaI, Cptr, ldC );
 	    // gemm_microkernel_Cresident_neon_4x4_prefetch( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC );
               END_TIMER(t_generic)

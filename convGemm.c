@@ -155,19 +155,7 @@ void sconvGemmNCHW(float *ref, char trans,
     free(aux);
 #else
     if (trans == 'N') {
-        gemm_nchw_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, NULL, ho * wo * b, in, kh * kw * c, beta, aux2, ho * wo * b, ac_pack, bc_pack, cc_pack, cntx, x, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, bias_vector);
-        // transpose first and second dimension
-        for (int i = 0; i < b; i++)
-            for (int j = 0; j < kn; j++)
-                for (int x = 0; x < ho; x++)
-                    for (int y = 0; y < wo; y++)
-                        out[i * kn * ho * wo +
-                            j      * ho * wo +
-                            x           * wo +
-                            y] = aux2[j * b * ho * wo +
-                                      i     * ho * wo +
-                                      x          * wo +
-                                      y];
+        gemm_nchw_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, NULL, ho * wo * b, in, kh * kw * c, beta, out, ho * wo * b, ac_pack, bc_pack, cc_pack, cntx, x, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, bias_vector);
         for (int i = 0; i < kn * ho * wo * b; i++)
             if (fabsf(out[i] - ref[i]) > 1e-4) {
                 printf("%d %e %e\n", i, out[i], ref[i]);

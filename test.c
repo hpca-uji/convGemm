@@ -154,19 +154,9 @@ int main(int argc, char *argv[])
     }
     for(int j = 0; j < kn; j++) // add bias
         for(int i = 0; i < ho * wo * b; i++)
-            out_gemm[j * ho * wo * b + i] += bias_vector[j];
+            out_blis[j * ho * wo * b + i] += bias_vector[j];
     // transpose first and second dimension
-    /* for (int i = 0; i < b; i++)
-        for (int j = 0; j < kn; j++)
-            for (int x = 0; x < ho; x++)
-                for (int y = 0; y < wo; y++)
-                    out_gemm[i * kn * ho * wo +
-                        j      * ho * wo +
-                        x           * wo +
-                        y] = out_blis[j * b * ho * wo +
-                                  i     * ho * wo +
-                                  x          * wo +
-                                  y]; */
+    transpose_nchw(ho * wo * b, kn, out_blis, ho * wo * b, 0.0, out_gemm, kn, ho, wo, 0, 0);
     if (!check(kn * ho * wo * b, out_gemm, out)) {
         printf(" error in gemm_nchw 'N' NCHW\n");
         return 2;

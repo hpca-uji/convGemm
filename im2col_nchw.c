@@ -164,3 +164,24 @@ void im2col_nchw(float *cols, int ld, const float *in, int batch, int channel, i
     }
 #endif
 }
+
+void transpose_nchw(int rows, int cols, float *in, int ld, float beta, float *out, int kn, int ho, int wo, int start_row, int start_col)
+{
+    // transpose first and second dimension
+    int start_y =  start_row % wo;
+    int start_x = (start_row / wo) % ho;
+    int start_b = (start_row / wo) / ho;
+    for (int j = 0; j < cols; j++) {
+        int y = start_y;
+        int x = start_x;
+        int b = start_b;
+        for (int i = 0; i < rows; i++) {
+            // out[((b * kn + k) * ho + x) * wo + y] = in[j * batch * ho * wo + b * ho * wo + x * wo + y];
+            int idx = ((b * kn + start_col + j) * ho + x) * wo + y;
+            out[idx] = beta * out[idx] + in[j * ld + i];
+            y++; if (y >= wo) { y = 0;
+            x++; if (x >= ho) { x = 0;
+            b++; } }
+        }
+    }
+}
