@@ -26,7 +26,7 @@ void sconvGemmNHWC_back(unsigned kn, unsigned kh, unsigned kw, unsigned c,
                         float *dy, float *dx,
                         float *ac_pack, float *bc_pack, float *cc_pack);
 
-void sconvGemmNCHW(float *ref, char trans,
+void sconvGemmNCHW(char trans,
                     unsigned kn, unsigned c, unsigned kh, unsigned kw,
                     float alpha, float *in,
                     unsigned h, unsigned w, unsigned b,

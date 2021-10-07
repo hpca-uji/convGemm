@@ -99,7 +99,7 @@ void sconvGemmNHWC_back(unsigned kn, unsigned kh, unsigned kw, unsigned c,
     free(aux);
 }
 
-void sconvGemmNCHW(float *ref, char trans,
+void sconvGemmNCHW(char trans,
                     unsigned kn, unsigned c, unsigned kh, unsigned kw,
                     float alpha, float *in,
                     unsigned h, unsigned w, unsigned b,
@@ -113,9 +113,9 @@ void sconvGemmNCHW(float *ref, char trans,
     cntx_t *cntx = bli_gks_query_cntx();
     int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1;
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
-    float *aux2 = (float *) calloc(kn * ho * wo * b, sizeof(float));
 #if 0
     float *aux  = (float *) calloc(c * kh * kw * ho * wo * b, sizeof(float));
+    float *aux2 = (float *) calloc(kn * ho * wo * b, sizeof(float));
     im2col_nchw(aux, b * ho * wo, x, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, 0, c * kh * kw, 0, b * ho * wo);
     if (trans == 'N') {
         sgemm('N', 'N', ho * wo * b, kn, kh * kw * c, alpha, aux, ho * wo * b, in, kh * kw * c, beta, aux2, ho * wo * b);
@@ -131,39 +131,28 @@ void sconvGemmNCHW(float *ref, char trans,
             for (int j = 0; j < kn; j++)
                 for (int x = 0; x < ho; x++)
                     for (int y = 0; y < wo; y++)
-                        out[i * kn * ho * wo +
-                            j      * ho * wo +
-                            x           * wo +
-                            y] = aux2[j * b * ho * wo +
-                                      i     * ho * wo +
-                                      x          * wo +
-                                      y];
-        for (int i = 0; i < kn * ho * wo * b; i++)
-            if (fabsf(out[i] - ref[i]) > 1e-4) {
-                printf("%d %e %e\n", i, out[i], ref[i]);
-                abort();
-            }
+                        out[((i * kn + j) * ho + x) * wo + y] = aux2[((j * b + i) * ho + x) * wo + y];
     } else {
-        /* TODO wrong dimensions
-        sgemm('T', 'N', kh * kw * c, kn, ho * wo * b, alpha, aux, ho * wo * b, in, kh * kw * c, beta, aux2, kh * kw * c);
-        for (int i = 0; i < kh * kw * c * kn; i++)
-            if (fabsf(out[i] - ref[i]) > 1e-4) {
-                printf("%d %e %e\n", i, out[i], ref[i]);
-                abort();
-            } */
+        // transpose first and second dimension
+        for (int i = 0; i < kn; i++)
+            for (int j = 0; j < b; j++)
+                for (int x = 0; x < ho; x++)
+                    for (int y = 0; y < wo; y++)
+                        aux2[((i * b + j) * ho + x) * wo + y] = in[((j * kn + i) * ho + x) * wo + y];
+        sgemm('T', 'N', kh * kw * c, kn, ho * wo * b, alpha, aux, ho * wo * b, aux2, ho * wo * b, beta, out, kh * kw * c);
     }
     free(aux);
+    free(aux2);
 #else
     if (trans == 'N') {
         gemm_nchw_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, NULL, ho * wo * b, in, kh * kw * c, beta, out, ho * wo * b, ac_pack, bc_pack, cc_pack, cntx, x, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, bias_vector);
-        for (int i = 0; i < kn * ho * wo * b; i++)
-            if (fabsf(out[i] - ref[i]) > 1e-4) {
-                printf("%d %e %e\n", i, out[i], ref[i]);
-                abort();
-            }
     } else {
-        abort(); // TODO not implemented
+        // transpose first and second dimension
+        // TODO move inside gemm
+        float *aux2 = (float *) calloc(kn * ho * wo * b, sizeof(float));
+        transpose_nchw(kn * ho * wo, b, in, kn * ho * wo, 0.0, aux2, b, ho, wo, 0, 0);
+        gemm_nchw_B3A2C0('C', 'C', 'C', 'T', 'N', kh * kw * c, kn, ho * wo * b, alpha, NULL, ho * wo * b, aux2, ho * wo * b, beta, out, kh * kw * c, ac_pack, bc_pack, cc_pack, cntx, x, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, bias_vector);
+        free(aux2);
     }
 #endif
-    free(aux2);
 }
