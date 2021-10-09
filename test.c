@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
     float *aux = calloc(c * kh * kw * ho * wo * b, sizeof(float));
     double t1 = get_time();
-    im2row_nhwc(aux, c * kh * kw, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, 0, ho * wo * b, 0, c * kh * kw);
+    im2row_nhwc(aux, c * kh * kw, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
     double t2 = get_time();
     double t_im2row = t2 - t1;
     printf("\t%e", t_im2row);
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 
     memset(aux, 0, c * kh * kw * ho * wo * b * sizeof(float));
     t1 = get_time();
-    im2col_nchw(aux, b * ho * wo, image, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, 0, c * kh * kw, 0, b * ho * wo);
+    im2col_nchw(aux, b * ho * wo, image, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
     t2 = get_time();
     double t_im2col = t2 - t1;
     printf("\t%e", t_im2col);

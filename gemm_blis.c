@@ -63,13 +63,14 @@ double t_pack = 0.0, t_kernel = 0.0, t_generic = 0.0;
 void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
                        char transA, char transB, 
                        int m, int n, int k, 
-                       float alpha, float *A, int ldA, 
-		                    float *B, int ldB, 
+                       float alpha, const float *A, int ldA, 
+		                    const float *B, int ldB, 
 		       float beta,  float *C, int ldC, 
 		       float *Ac, float *Bc, float *Cc, cntx_t *cntx ){
   int    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr; 
   float  zero = 0.0, one = 1.0, betaI; 
-  float  *Aptr, *Bptr, *Cptr;
+  const float *Aptr, *Bptr;
+  float *Cptr;
 
   sgemm_ukr_ft gemm_kernel = bli_cntx_get_l3_nat_ukr_dt(BLIS_FLOAT, BLIS_GEMM, cntx);
   int MR = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MR, cntx);
@@ -165,7 +166,7 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
   }
 }
 
-void pack_RB( char orderM, char transM, int mc, int nc, float *M, int ldM, float *Mc, int RR ){
+void pack_RB( char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR ){
 /*
   BLIS pack for M-->Mc
 */
@@ -208,7 +209,7 @@ void pack_RB( char orderM, char transM, int mc, int nc, float *M, int ldM, float
     }
 }
 
-void pack_CB( char orderM, char transM, int mc, int nc, float *M, int ldM, float *Mc, int RR ){
+void pack_CB( char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR ){
 /*
   BLIS pack for M-->Mc
 */
@@ -252,7 +253,7 @@ void pack_CB( char orderM, char transM, int mc, int nc, float *M, int ldM, float
     }
 }
 
-void unpack_RB( char orderM, char transM, int mc, int nc, float *M, int ldM, float *Mc, int RR ){
+void unpack_RB( char orderM, char transM, int mc, int nc, float *M, int ldM, const float *Mc, int RR ){
 /*
   BLIS unpack for M-->Mc
 */
@@ -287,7 +288,7 @@ void unpack_RB( char orderM, char transM, int mc, int nc, float *M, int ldM, flo
     }
 }
 
-void unpack_CB( char orderM, char transM, int mc, int nc, float *M, int ldM, float *Mc, int RR ){
+void unpack_CB( char orderM, char transM, int mc, int nc, float *M, int ldM, const float *Mc, int RR ){
 /*
   BLIS unpack for M-->Mc
 */
@@ -324,8 +325,8 @@ void unpack_CB( char orderM, char transM, int mc, int nc, float *M, int ldM, flo
 }
 
 void gemm_base_Cresident( char orderC, int m, int n, int k, 
-                          float alpha, float *A, int ldA, 
-                                       float *B, int ldB, 
+                          float alpha, const float *A, int ldA, 
+                                       const float *B, int ldB, 
                           float beta,  float *C, int ldC ){
 /*
   Baseline micro-kernel 

@@ -27,14 +27,14 @@ int alloc_pack_buffs(float** Ac_pack, float** Bc_pack, float** Cc_pack)
 }
 
 void sconvGemmNHWC(char trans,
-                    unsigned c, unsigned kh, unsigned kw, unsigned kn,
-                    float alpha, float *in,
-                    unsigned b, unsigned h, unsigned w,
+                    unsigned b, unsigned h, unsigned w, unsigned c,
+                    unsigned kn, unsigned kh, unsigned kw,
                     unsigned vpadding, unsigned hpadding,
                     unsigned vstride, unsigned hstride,
                     unsigned vdilation, unsigned hdilation,
-                    float *x, float beta,
-                    float *out, float *bias_vector,
+                    float alpha, const float *in,
+                    const float *x, float beta,
+                    float *out, const float *bias_vector,
                     float *ac_pack, float *bc_pack, float *cc_pack)
 {
     /*
@@ -46,14 +46,9 @@ void sconvGemmNHWC(char trans,
 
     int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1;
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
-    // printf("im2row_nhwc h=%d ho=%d vp=%d vs=%d vd=%d\n", h, ho, vpadding, vstride, vdilation);
-    // printf("im2row_nhwc w=%d wo=%d hp=%d hs=%d hd=%d\n", w, wo, hpadding, hstride, hdilation);
-    // printf("sconvGemmNHWC trans=%c  bias_vector=", trans);
-    // if (bias_vector) for (int i = 0; i < kn; i++) printf(" %g", bias_vector[i]);
-    // printf("\n");
 #if 0
     float *aux = (float *) calloc(c * kh * kw * ho * wo * b, sizeof(float));
-    im2row_nhwc(aux, c * kh * kw, x, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, 0, ho * wo * b, 0, c * kh * kw);
+    im2row_nhwc(aux, c * kh * kw, x, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
     if (trans == 'N') {
         sgemm('N', 'N', kn, ho * wo * b, kh * kw * c, alpha, in, kn, aux, kh * kw * c, beta, out, kn);
         // gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, in, kn, aux, kh * kw * c, beta, out, kn, ac_pack, bc_pack);
@@ -78,36 +73,35 @@ void sconvGemmNHWC(char trans,
 #endif
 }
 
-void sconvGemmNHWC_back(unsigned kn, unsigned kh, unsigned kw, unsigned c,
-                        float alpha, float *weights,
-                        unsigned b, unsigned h, unsigned w,
-                        unsigned hstride, unsigned vstride,
-                        unsigned hpadding, unsigned vpadding,
+void sconvGemmNHWC_back(unsigned b, unsigned h, unsigned w, unsigned c,
+                        unsigned kn, unsigned kh, unsigned kw,
+                        unsigned vstride, unsigned hstride,
+                        unsigned vpadding, unsigned hpadding,
                         unsigned vdilation, unsigned hdilation,
-                        float *dy, float *dx,
+                        float alpha, const float *weights,
+                        const float *dy, float *dx,
                         float *ac_pack, float *bc_pack, float *cc_pack)
 {
     /*
-     * Computes: dx = row2im(dy * transpose(weights))
+     * Computes: dx = row2im(transpose(weights) * dy)
      */
     int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1;
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
     float *aux = (float *) calloc(c * kh * kw * ho * wo * b, sizeof(float));
-    sgemm('T', 'N', c * kh * kw, ho * wo * b, kn, 1.0, weights, kn, dy, kn, 0.0, aux, c * kh * kw);
+    sgemm('T', 'N', c * kh * kw, ho * wo * b, kn, alpha, weights, kn, dy, kn, 0.0, aux, c * kh * kw);
     row2im_nhwc(aux, dx, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
-
     free(aux);
 }
 
 void sconvGemmNCHW(char trans,
-                    unsigned kn, unsigned c, unsigned kh, unsigned kw,
-                    float alpha, float *in,
-                    unsigned h, unsigned w, unsigned b,
+                    unsigned b, unsigned c, unsigned h, unsigned w,
+                    unsigned kn, unsigned kh, unsigned kw,
                     unsigned vpadding, unsigned hpadding,
-                    unsigned hstride, unsigned vstride,
+                    unsigned vstride, unsigned hstride,
                     unsigned vdilation, unsigned hdilation,
-                    float *x, float beta,
-                    float *out, float *bias_vector,
+                    float alpha, const float *in,
+                    const float *x, float beta,
+                    float *out, const float *bias_vector,
                     float *ac_pack, float *bc_pack, float *cc_pack)
 {
     cntx_t *cntx = bli_gks_query_cntx();
@@ -116,7 +110,7 @@ void sconvGemmNCHW(char trans,
 #if 0
     float *aux  = (float *) calloc(c * kh * kw * ho * wo * b, sizeof(float));
     float *aux2 = (float *) calloc(kn * ho * wo * b, sizeof(float));
-    im2col_nchw(aux, b * ho * wo, x, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, 0, c * kh * kw, 0, b * ho * wo);
+    im2col_nchw(aux, b * ho * wo, x, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
     if (trans == 'N') {
         sgemm('N', 'N', ho * wo * b, kn, kh * kw * c, alpha, aux, ho * wo * b, in, kh * kw * c, beta, aux2, ho * wo * b);
         // gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, aux, ho * wo * b, in, kh * kw * c, beta, aux2, ho * wo * b, ac_pack, bc_pack, cc_pack, cntx);
@@ -145,14 +139,38 @@ void sconvGemmNCHW(char trans,
     free(aux2);
 #else
     if (trans == 'N') {
-        gemm_nchw_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, NULL, ho * wo * b, in, kh * kw * c, beta, out, ho * wo * b, ac_pack, bc_pack, cc_pack, cntx, x, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, bias_vector);
+        gemm_nchw_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, NULL, ho * wo * b, in, kh * kw * c, beta, out, ho * wo * b, ac_pack, bc_pack, cc_pack, cntx, x, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, bias_vector);
     } else {
         // transpose first and second dimension
         // TODO move inside gemm
         float *aux2 = (float *) calloc(kn * ho * wo * b, sizeof(float));
         transpose_nchw(kn * ho * wo, b, in, kn * ho * wo, 0.0, aux2, b, ho, wo, 0, 0);
-        gemm_nchw_B3A2C0('C', 'C', 'C', 'T', 'N', kh * kw * c, kn, ho * wo * b, alpha, NULL, ho * wo * b, aux2, ho * wo * b, beta, out, kh * kw * c, ac_pack, bc_pack, cc_pack, cntx, x, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, bias_vector);
+        gemm_nchw_B3A2C0('C', 'C', 'C', 'T', 'N', kh * kw * c, kn, ho * wo * b, alpha, NULL, ho * wo * b, aux2, ho * wo * b, beta, out, kh * kw * c, ac_pack, bc_pack, cc_pack, cntx, x, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, bias_vector);
         free(aux2);
     }
 #endif
+}
+
+void sconvGemmNCHW_back(unsigned b, unsigned c, unsigned h, unsigned w,
+                        unsigned kn, unsigned kh, unsigned kw,
+                        unsigned vstride, unsigned hstride,
+                        unsigned vpadding, unsigned hpadding,
+                        unsigned vdilation, unsigned hdilation,
+                        float alpha, const float *weights,
+                        const float *dy, float *dx,
+                        float *ac_pack, float *bc_pack, float *cc_pack)
+{
+    /*
+     * Computes: dx = col2im(dy * transpose(weights))
+     */
+    int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1;
+    int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
+    float *aux = (float *) calloc(c * kh * kw * ho * wo * b, sizeof(float));
+    float *aux2 = (float *) calloc(kn * ho * wo * b, sizeof(float));
+    // transpose first and second dimension
+    transpose_nchw(kn * ho * wo, b, dy, kn * ho * wo, 0.0, aux2, b, ho, wo, 0, 0);
+    sgemm('N', 'T', b * ho * wo, c * kh * kw, kn, alpha, aux2, b * ho * wo, weights, c * kh * kw, 0.0, aux, b * ho * wo);
+    col2im_nchw(aux, b * ho * wo, dx, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+    free(aux);
+    free(aux2);
 }

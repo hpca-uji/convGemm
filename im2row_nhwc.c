@@ -6,7 +6,7 @@
 #define min(a,b) (((a)<(b))?(a):(b))
 #define Mcol(a1,a2)  M[ (a2)*(ldM)+(a1) ]
 
-void pack_CB_nhwc( char orderM, char transM, int mc, int nc, float *M, int ldM, float *Mc, int RR, float *in, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation, int start_i, int start_j)
+void pack_CB_nhwc(char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const float *in, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation, int start_i, int start_j)
 {
 /*
   BLIS pack for M-->Mc using implicit im2row
@@ -38,10 +38,7 @@ void pack_CB_nhwc( char orderM, char transM, int mc, int nc, float *M, int ldM, 
                     int ix = vstride * x + vdilation * kx - vpadding;
                     int iy = hstride * y + hdilation * ky - hpadding;
                     if (0 <= ix && ix < height && 0 <= iy && iy < width) {
-                        Mc[k] = in[b * height * width * channel +
-                                   ix         * width * channel +
-                                   iy                 * channel +
-                                   c];
+                        Mc[k] = in[((b * height + ix) * width + iy) * channel + c];
                     } else Mc[k] = 0.0;
                     k++;
                     // next pixel position
@@ -84,10 +81,7 @@ void pack_CB_nhwc( char orderM, char transM, int mc, int nc, float *M, int ldM, 
                     int ix = vstride * x + vdilation * kx - vpadding;
                     int iy = hstride * y + hdilation * ky - hpadding;
                     if (0 <= ix && ix < height && 0 <= iy && iy < width) {
-                        Mc[k] = in[b * height * width * channel +
-                                   ix         * width * channel +
-                                   iy                 * channel +
-                                   c];
+                        Mc[k] = in[((b * height + ix) * width + iy) * channel + c];
                     } else Mc[k] = 0.0;
                     k++;
                     // next kernel position
@@ -109,7 +103,7 @@ void pack_CB_nhwc( char orderM, char transM, int mc, int nc, float *M, int ldM, 
     }
 }
 
-void im2row_nhwc(float *rows, int ld, const float *in, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation, int start_row, int end_row, int start_col, int end_col)
+void im2row_nhwc(float *rows, int ld, const float *in, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
 {
 #if 1
     // #pragma omp parallel for
@@ -125,11 +119,7 @@ void im2row_nhwc(float *rows, int ld, const float *in, int batch, int height, in
                                 int iy = hstride * y + hdilation * ky - hpadding;
                                 if (0 <= iy && iy < width) {
                                     int col = c * kheight * kwidth + kx * kwidth + ky;
-                                    rows[row * channel * kheight * kwidth + col] = in[
-                                        b * height * width * channel +
-                                        ix         * width * channel +
-                                        iy                 * channel +
-                                        c];
+                                    rows[row * channel * kheight * kwidth + col] = in[((b * height + ix) * width + iy) * channel + c];
                                 }
                             }
                     }

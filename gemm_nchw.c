@@ -65,15 +65,16 @@ double t_pack = 0.0, t_kernel = 0.0, t_generic = 0.0;
 void gemm_nchw_B3A2C0( char orderA, char orderB, char orderC,
                        char transA, char transB, 
                        int m, int n, int k, 
-                       float alpha, float *A, int ldA, 
-		                    float *B, int ldB, 
+                       float alpha, const float *A, int ldA, 
+		                    const float *B, int ldB, 
 		       float beta,  float *C, int ldC, 
 		       float *Ac, float *Bc, float *Cc, cntx_t *cntx,
-                       float *in, int b, int h, int w, int c, int ho, int wo, int kh, int kw, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation, float *bias_vector)
+                       const float *in, int b, int c, int h, int w, int ho, int wo, int kh, int kw, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation, const float *bias_vector)
 {
   int    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr; 
   float  zero = 0.0, one = 1.0, betaI; 
-  float  *Aptr, *Bptr, *Cptr;
+  const float *Aptr, *Bptr;
+  float *Cptr;
 
   sgemm_ukr_ft gemm_kernel = bli_cntx_get_l3_nat_ukr_dt(BLIS_FLOAT, BLIS_GEMM, cntx);
   int MR = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MR, cntx);
@@ -136,7 +137,7 @@ void gemm_nchw_B3A2C0( char orderA, char orderB, char orderC,
           Aptr = &Arow(pc,ic);
         BEGIN_TIMER
         // pack_RB( orderA, transA, mc, kc, Aptr, ldA, Ac, MR);
-        pack_RB_nchw( orderA, transA, mc, kc, Aptr, ldA, Ac, MR, in, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, ic, pc);
+        pack_RB_nchw( orderA, transA, mc, kc, Aptr, ldA, Ac, MR, in, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, ic, pc);
         END_TIMER(t_pack)
         
         for ( jr=0; jr<nc; jr+=NR ) {
