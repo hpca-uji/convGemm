@@ -147,11 +147,7 @@ void im2row_nhwc(float *rows, int ld, const float *in, int batch, int height, in
             int iy = hstride * y + hdilation * ky - hpadding;
             if (0 <= ix && ix < height && 0 <= iy && iy < width) {
                 // rows[row, col] = in[b, ix, iy, c]
-                rows[row * ld + col] = in[
-                    b * height * width * channel +
-                    ix         * width * channel +
-                    iy                 * channel +
-                    c];
+                rows[row * ld + col] = in[((b * height + ix) * width + iy) * channel + c];
             } else rows[row * ld + col] = 0;
             ky++; if (ky >= kwidth) { ky = 0;
             kx++; if (kx >= kheight) { kx = 0;
@@ -164,8 +160,9 @@ void im2row_nhwc(float *rows, int ld, const float *in, int batch, int height, in
 #endif
 }
 
-void row2im_nhwc(const float *rows, float *out, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
+void row2im_nhwc(int m, int n, const float *rows, int ld, float *out, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation, int start_row, int start_col)
 {
+#if 0
     // #pragma omp parallel for
     for (int b = 0; b < batch; b++)
         for (int x = 0; x < oheight; x++)
@@ -180,12 +177,44 @@ void row2im_nhwc(const float *rows, float *out, int batch, int height, int width
                                 if (0 <= iy && iy < width) {
                                     int col = c * kheight * kwidth + kx * kwidth + ky;
                                     // out[b, x_x, x_y, cc] += rows[row, col]
-                                    out[b  * height * width * channel +
-                                        ix          * width * channel +
-                                        iy                  * channel +
-                                        c] += rows[row * channel * kheight * kwidth + col];
+                                    out[((b  * height + ix) * width + iy) * channel + c] += rows[row * channel * kheight * kwidth + col];
                                 }
                             }
                     }
             }
+#else
+    /* int m = oheight * owidth * batch;
+    int n = channel * kheight * kwidth;
+    int ld = channel * kheight * kwidth;
+    int start_row = 0;
+    int start_col = 0; */
+    // starting values for the first row
+    // int row = (b * oheight + x) * owidth + y;
+    int y =  start_row % owidth;
+    int x = (start_row / owidth) % oheight;
+    int b = (start_row / owidth) / oheight;
+    // starting values for the first column
+    // int col = (c * kheight + kx) * kwidth + ky;
+    int start_ky =  start_col % kwidth;
+    int start_kx = (start_col / kwidth) % kheight;
+    int start_c  = (start_col / kwidth) / kheight;
+
+    // #pragma omp parallel for
+    for (int row = 0; row < m; row++) {
+        for (int col = 0, c = start_c, kx = start_kx, ky = start_ky; col < n; col++) {
+            int ix = vstride * x + vdilation * kx - vpadding;
+            int iy = hstride * y + hdilation * ky - hpadding;
+            if (0 <= ix && ix < height && 0 <= iy && iy < width) {
+                // in[b, ix, iy, c] += rows[row, col]
+                out[((b * height + ix) * width + iy) * channel + c] += rows[row * ld + col];
+            }
+            ky++; if (ky >= kwidth) { ky = 0;
+            kx++; if (kx >= kheight) { kx = 0;
+            c++; } }
+        }
+        y++; if (y >= owidth) { y = 0;
+        x++; if (x >= oheight) { x = 0;
+        b++; } }
+    }
+#endif
 }

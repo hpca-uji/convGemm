@@ -182,8 +182,9 @@ void transpose_nchw(int rows, int cols, const float *in, int ld, float beta, flo
     }
 }
 
-void col2im_nchw(const float *cols, int ld, float *out, int batch, int channel, int height, int width, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
+void col2im_nchw(int m, int n, const float *cols, int ld, float *out, int batch, int channel, int height, int width, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation, int start_row, int start_col)
 {
+#if 0
     // #pragma omp parallel for
     for (int c = 0; c < channel; c++)
         for (int kx = 0; kx < kheight; kx++)
@@ -202,4 +203,37 @@ void col2im_nchw(const float *cols, int ld, float *out, int batch, int channel, 
                             }
                     }
             }
+#else
+    /* int m = channel * kheight * kwidth;
+    int n = oheight * owidth * batch;
+    int start_row = 0;
+    int start_col = 0; */
+    // starting values for the first row
+    // int row = (c * kheight + kx) * kwidth + ky;
+    int ky =  start_row % kwidth;
+    int kx = (start_row / kwidth) % kheight;
+    int c  = (start_row / kwidth) / kheight;
+    // starting values for the first column
+    // int col = (b * oheight + x) * owidth + y;
+    int start_y =  start_col % owidth;
+    int start_x = (start_col / owidth) % oheight;
+    int start_b = (start_col / owidth) / oheight;
+
+    // #pragma omp parallel for
+    for (int row = 0; row < m; row++) {
+        for (int col = 0, b = start_b, x = start_x, y = start_y; col < n; col++) {
+            int ix = vstride * x + vdilation * kx - vpadding;
+            int iy = hstride * y + hdilation * ky - hpadding;
+            if (0 <= ix && ix < height && 0 <= iy && iy < width) {
+                out[((b * channel + c) * height + ix) * width + iy] += cols[row * ld + col];
+            }
+            y++; if (y >= owidth) { y = 0;
+            x++; if (x >= oheight) { x = 0;
+            b++; } }
+        }
+        ky++; if (ky >= kwidth) { ky = 0;
+        kx++; if (kx >= kheight) { kx = 0;
+        c++; } }
+    }
+#endif
 }

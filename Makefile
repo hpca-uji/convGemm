@@ -10,7 +10,7 @@ LFLAGS = -fopenmp -lm -L$(BLIS_LIB) -Wl,-rpath=$(BLIS_LIB) -lblis
 
 default: libconvGemm.so test test_gemm
 
-libconvGemm.so: convGemm.o gemm_blis.o gemm_nhwc.o im2row_nhwc.o gemm_nchw.o im2col_nchw.o
+libconvGemm.so: convGemm.o gemm_blis.o gemm_nhwc.o gemm_back_nhwc.o im2row_nhwc.o gemm_nchw.o gemm_back_nchw.o im2col_nchw.o
 	$(LINKER) -shared -o $@ $^ $(LFLAGS)
 
 
@@ -21,7 +21,7 @@ runtest: test test.dat
 test.dat: test.pl test.txt
 	perl $^ > $@
 
-test: test.o convGemm.o gemm_blis.o gemm_nhwc.o im2row_nhwc.o gemm_nchw.o im2col_nchw.o
+test: test.o gemm_blis.o gemm_nhwc.o im2row_nhwc.o gemm_nchw.o im2col_nchw.o
 	$(LINKER) -o $@ $^ $(LFLAGS)
 
 test_gemm: test_gemm.o gemm_blis.o
