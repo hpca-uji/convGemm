@@ -174,10 +174,130 @@ void transpose_nchw(int rows, int cols, const float *in, int ld, float beta, flo
         for (int i = 0; i < rows; i++) {
             // out[((b * kn + k) * ho + x) * wo + y] = in[((j * batch + b) * ho + x) * wo + y];
             int idx = ((b * kn + start_col + j) * ho + x) * wo + y;
-            out[idx] = beta * out[idx] + in[j * ld + i];
+            if (beta == 0.0) out[idx] = in[j * ld + i];
+            else out[idx] = beta * out[idx] + in[j * ld + i];
             y++; if (y >= wo) { y = 0;
             x++; if (x >= ho) { x = 0;
             b++; } }
+        }
+    }
+}
+
+void pack_CB_nchw_trans(char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, int kn, int ho, int wo, int start_row, int start_col)
+{
+/*
+  BLIS pack for M-->Mc transposing first and second tensor dimensions
+*/
+    if ( ((transM=='N')&&( orderM=='C')) || ((transM=='T')&&( orderM=='R')) ) {
+        for (int j = 0; j < nc; j += RR) {
+            int k = j * mc;
+            int nr = min(nc - j, RR);
+            for (int i = 0; i < mc; i++) {
+                int jj = 0;
+                for (; jj < nr; jj++) {
+                    // Mc[k] = Mcol(i, j + jj);
+                    // Mc[k] = M[start_row + i + (start_col + j + jj) * ldM];
+                    // Mc[k] = M[(z * ho + x) * wo + y + (start_col + j + jj) * batch * ho * wo];
+                    // Mc[k] = M[(((start_col + j + jj) * batch + z) * ho + x) * wo + y];
+                    int y =  (start_row + i) % wo;
+                    int x = ((start_row + i) / wo) % ho;
+                    int b = ((start_row + i) / wo) / ho;
+                    Mc[k] = M[((b * kn + (start_col + j + jj)) * ho + x) * wo + y];
+                    k++;
+                }
+                for (; jj < RR; jj++) {
+                    Mc[k] = 0.0;
+                    k++;
+                }
+                // k += (RR-nr);
+            }
+        }
+    } else {
+        // TODO
+        for (int j = 0; j < nc; j += RR) {
+            int k = j * mc;
+            int nr = min(nc - j, RR);
+            for (int i = 0; i < mc; i++) {
+                int jj = 0;
+                for (; jj < nr; jj++) {
+                    Mc[k] = Mcol(j + jj, i);
+                    k++;
+                }
+                for (; jj < RR; jj++) {
+                    Mc[k] = 0.0;
+                    k++;
+                }
+                // k += (RR-nr);
+            }
+        }
+    }
+}
+
+void pack_RB_nchw_trans( char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, int kn, int ho, int wo, int start_row, int start_col)
+{
+/*
+  BLIS pack for M-->Mc transposing first and second tensor dimensions
+*/
+    if (((transM == 'N') && (orderM == 'C')) || ((transM == 'T') && (orderM == 'R'))) {
+        for (int i = 0; i < mc; i += RR) {
+            int k = i * nc;
+            int rr = min(mc - i, RR);
+            for (int j = 0; j < nc; j++) {
+                int ii = 0;
+                for (; ii < rr; ii++) {
+                    // Mc[k] = Mcol(i + ii, j);
+                    // Mc[k] = M[start_row + i + ii + (start_col + j) * ldM];
+                    int y =  (start_row + i + ii) % wo;
+                    int x = ((start_row + i + ii) / wo) % ho;
+                    int b = ((start_row + i + ii) / wo) / ho;
+                    Mc[k] = M[((b * kn + (start_col + j)) * ho + x) * wo + y];
+                    k++;
+                }
+                for (; ii < RR; ii++) {
+                    Mc[k] = 0.0;
+                    k++;
+                }
+                // k += (RR-rr);
+            }
+        }
+    } else {
+        // TODO
+        for (int i = 0; i < mc; i += RR) {
+            int k = i * nc;
+            int rr = min(mc - i, RR);
+            for (int j = 0; j < nc; j++) {
+                 int ii = 0;
+                 for (; ii < rr; ii++) {
+                    Mc[k] = Mcol(j, i + ii);
+                    k++;
+                }
+                for (; ii < RR; ii++) {
+                    Mc[k] = 0.0;
+                    k++;
+                }
+                // k += (RR-rr);
+            }
+        }
+    }
+}
+
+void pack_transpose_nchw(int rows, int cols, const float *in, int ld, float *out, int b, int ho, int wo, int start_row, int start_col)
+{
+    // transpose first and second dimension
+    int start_y =  start_row % wo;
+    int start_x = (start_row / wo) % ho;
+    int start_k = (start_row / wo) / ho;
+    for (int j = 0; j < cols; j++) {
+        int y = start_y;
+        int x = start_x;
+        int k = start_k;
+        for (int i = 0; i < rows; i++) {
+            // out[((b * kn + k) * ho + x) * wo + y] = in[((j * batch + b) * ho + x) * wo + y];
+            int idx = ((k * b + start_col + j) * ho + x) * wo + y;
+            out[j * ld + i] = in[idx];
+            y++; if (y >= wo) { y = 0;
+            x++; if (x >= ho) { x = 0;
+            k++; } }
         }
     }
 }

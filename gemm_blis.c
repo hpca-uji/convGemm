@@ -49,17 +49,6 @@
 #define Crow(a1,a2)  C[ (a1)*(ldC)+(a2) ]
 #define Mrow(a1,a2)  M[ (a1)*(ldM)+(a2) ]
 
-int print_matrix(char *, char, int, int, float *, int);
-
-#ifdef BENCHMARK
-double t_pack = 0.0, t_kernel = 0.0, t_generic = 0.0;
-#define BEGIN_TIMER { double t1 = get_time();
-#define END_TIMER(t) double t2 = get_time(); t += t2 - t1; }
-#else
-#define BEGIN_TIMER
-#define END_TIMER(t)
-#endif
-
 void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
                        char transA, char transB, 
                        int m, int n, int k, 
@@ -152,6 +141,7 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
             } else */ {
               BEGIN_TIMER
               gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &zero, Cc, 1, MR, NULL, cntx);
+              END_BEGIN_TIMER(t_kernel)
               for (int j = 0; j < nr; j++)
                   for (int i = 0; i < mr; i++)
                       Cptr[j * ldC + i] = betaI * Cptr[j * ldC + i] + Cc[j * MR + i];

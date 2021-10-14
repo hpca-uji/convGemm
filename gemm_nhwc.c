@@ -34,8 +34,6 @@
 // #include <arm_neon.h>
 
 #include <blis.h>
-
-#include "convGemm.h"
 #include "gemm_blis.h"
 #include "gemm_nhwc.h"
 #include "im2row_nhwc.h"
@@ -52,17 +50,6 @@
 #define Brow(a1,a2)  B[ (a1)*(ldB)+(a2) ]
 #define Crow(a1,a2)  C[ (a1)*(ldC)+(a2) ]
 #define Mrow(a1,a2)  M[ (a1)*(ldM)+(a2) ]
-
-int print_matrix(char *, char, int, int, float *, int);
-
-#ifdef BENCHMARK
-double t_pack = 0.0, t_kernel = 0.0, t_generic = 0.0;
-#define BEGIN_TIMER { double t1 = get_time();
-#define END_TIMER(t) double t2 = get_time(); t += t2 - t1; }
-#else
-#define BEGIN_TIMER
-#define END_TIMER(t)
-#endif
 
 void gemm_nhwc_B3A2C0( char orderA, char orderB, char orderC,
                        char transA, char transB, 
@@ -159,8 +146,7 @@ void gemm_nhwc_B3A2C0( char orderA, char orderB, char orderC,
             } else */ {
               BEGIN_TIMER
               gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &zero, Cc, 1, MR, NULL, cntx);
-              END_TIMER(t_kernel)
-              BEGIN_TIMER
+              END_BEGIN_TIMER(t_kernel)
               if (pc == 0) {
                 if (bias_vector) {
                     for (int j = 0; j < nr; j++)

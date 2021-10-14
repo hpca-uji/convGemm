@@ -51,17 +51,6 @@
 #define Crow(a1,a2)  C[ (a1)*(ldC)+(a2) ]
 #define Mrow(a1,a2)  M[ (a1)*(ldM)+(a2) ]
 
-int print_matrix(char *, char, int, int, float *, int);
-
-#ifdef BENCHMARK
-double t_pack = 0.0, t_kernel = 0.0, t_generic = 0.0;
-#define BEGIN_TIMER { double t1 = get_time();
-#define END_TIMER(t) double t2 = get_time(); t += t2 - t1; }
-#else
-#define BEGIN_TIMER
-#define END_TIMER(t)
-#endif
-
 void gemm_nchw_B3A2C0( char orderA, char orderB, char orderC,
                        char transA, char transB, 
                        int m, int n, int k, 
@@ -116,7 +105,10 @@ void gemm_nchw_B3A2C0( char orderA, char orderB, char orderC,
       else
         Bptr = &Brow(jc,pc);
       BEGIN_TIMER
-      pack_CB( orderB, transB, kc, nc, Bptr, ldB, Bc, NR);
+      if (transA == 'N')
+        pack_CB( orderB, transB, kc, nc, Bptr, ldB, Bc, NR);
+      else
+        pack_CB_nchw_trans(orderB, transB, kc, nc, B, ldB, Bc, NR, n /* kn */, ho, wo, pc, jc);
       END_TIMER(t_pack)
 
       if ( pc==0 )
@@ -157,8 +149,7 @@ void gemm_nchw_B3A2C0( char orderA, char orderB, char orderC,
             } else */ {
               BEGIN_TIMER
               gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &zero, Cc, 1, MR, NULL, cntx);
-              END_TIMER(t_kernel)
-              BEGIN_TIMER
+              END_BEGIN_TIMER(t_kernel)
               if (pc == 0 && bias_vector) {
                 for (int j = 0; j < nr; j++)
                     for (int i = 0; i < mr; i++)

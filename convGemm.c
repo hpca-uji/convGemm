@@ -85,7 +85,7 @@ void sconvGemmNHWC_back(unsigned b, unsigned h, unsigned w, unsigned c,
                         float *ac_pack, float *bc_pack, float *cc_pack)
 {
     /*
-     * Computes: dx = row2im(transpose(weights) * dy)
+     * Computes: dx = dx + row2im(transpose(weights) * dy)
      */
     int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1;
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
@@ -148,12 +148,7 @@ void sconvGemmNCHW(char trans,
     if (trans == 'N') {
         gemm_nchw_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, NULL, ho * wo * b, in, kh * kw * c, beta, out, ho * wo * b, ac_pack, bc_pack, cc_pack, cntx, x, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, bias_vector);
     } else {
-        // transpose first and second dimension
-        // TODO move inside gemm
-        float *aux2 = (float *) calloc(kn * ho * wo * b, sizeof(float));
-        transpose_nchw(kn * ho * wo, b, in, kn * ho * wo, 0.0, aux2, b, ho, wo, 0, 0);
-        gemm_nchw_B3A2C0('C', 'C', 'C', 'T', 'N', kh * kw * c, kn, ho * wo * b, alpha, NULL, ho * wo * b, aux2, ho * wo * b, beta, out, kh * kw * c, ac_pack, bc_pack, cc_pack, cntx, x, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, bias_vector);
-        free(aux2);
+        gemm_nchw_B3A2C0('C', 'C', 'C', 'T', 'N', kh * kw * c, kn, ho * wo * b, alpha, NULL, ho * wo * b, in, ho * wo * b, beta, out, kh * kw * c, ac_pack, bc_pack, cc_pack, cntx, x, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, bias_vector);
     }
 #endif
 }
@@ -172,17 +167,17 @@ void sconvGemmNCHW_back(unsigned b, unsigned c, unsigned h, unsigned w,
      */
     int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1;
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
+#if 0
+    float *aux = (float *) calloc(c * kh * kw * ho * wo * b, sizeof(float));
     float *aux2 = (float *) calloc(kn * ho * wo * b, sizeof(float));
     // transpose first and second dimension
     transpose_nchw(kn * ho * wo, b, dy, kn * ho * wo, 0.0, aux2, b, ho, wo, 0, 0);
-#if 1
-    float *aux = (float *) calloc(c * kh * kw * ho * wo * b, sizeof(float));
     sgemm('N', 'T', b * ho * wo, c * kh * kw, kn, alpha, aux2, b * ho * wo, weights, c * kh * kw, 0.0, aux, b * ho * wo);
     col2im_nchw(c * kh * kw, b * ho * wo, aux, b * ho * wo, dx, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, 0, 0);
     free(aux);
+    free(aux2);
 #else
     cntx_t *cntx = bli_gks_query_cntx();
     gemm_back_nchw_B3A2C0('C', 'C', 'C', 'N', 'T', b * ho * wo, c * kh * kw, kn, alpha, aux2, b * ho * wo, weights, c * kh * kw, 1.0, NULL, b * ho * wo, ac_pack, bc_pack, cc_pack, cntx, dx, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
 #endif
-    free(aux2);
 }

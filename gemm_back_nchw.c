@@ -35,7 +35,7 @@
 
 #include <blis.h>
 #include "gemm_blis.h"
-#include "gemm_nchw.h"
+#include "gemm_back_nchw.h"
 #include "im2col_nchw.h"
 
 #define min(a,b) (((a)<(b))?(a):(b))
@@ -50,17 +50,6 @@
 #define Brow(a1,a2)  B[ (a1)*(ldB)+(a2) ]
 #define Crow(a1,a2)  C[ (a1)*(ldC)+(a2) ]
 #define Mrow(a1,a2)  M[ (a1)*(ldM)+(a2) ]
-
-int print_matrix(char *, char, int, int, float *, int);
-
-#ifdef BENCHMARK
-double t_pack = 0.0, t_kernel = 0.0, t_generic = 0.0;
-#define BEGIN_TIMER { double t1 = get_time();
-#define END_TIMER(t) double t2 = get_time(); t += t2 - t1; }
-#else
-#define BEGIN_TIMER
-#define END_TIMER(t)
-#endif
 
 void gemm_back_nchw_B3A2C0( char orderA, char orderB, char orderC,
                        char transA, char transB, 
@@ -119,10 +108,10 @@ void gemm_back_nchw_B3A2C0( char orderA, char orderB, char orderC,
       pack_CB( orderB, transB, kc, nc, Bptr, ldB, Bc, NR);
       END_TIMER(t_pack)
 
-      if ( pc==0 )
+      /* if ( pc==0 )
         betaI = beta;
       else
-        betaI = one;
+        betaI = one; */
 
       for ( ic=0; ic<m; ic+=MC ) {
         mc = min(m-ic, MC); 
@@ -136,7 +125,8 @@ void gemm_back_nchw_B3A2C0( char orderA, char orderB, char orderC,
         else
           Aptr = &Arow(pc,ic);
         BEGIN_TIMER
-        pack_RB( orderA, transA, mc, kc, Aptr, ldA, Ac, MR);
+        // pack_RB( orderA, transA, mc, kc, Aptr, ldA, Ac, MR);
+        pack_RB_nchw_trans( orderA, transA, mc, kc, A, ldA, Ac, MR, k /* kn */, ho, wo, ic, pc);
         END_TIMER(t_pack)
         
         for ( jr=0; jr<nc; jr+=NR ) {
@@ -156,8 +146,7 @@ void gemm_back_nchw_B3A2C0( char orderA, char orderB, char orderC,
             } else */ {
               BEGIN_TIMER
               gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &zero, Cc, 1, MR, NULL, cntx);
-              END_TIMER(t_kernel)
-              BEGIN_TIMER
+              END_BEGIN_TIMER(t_kernel)
               col2im_nchw(nr, mr, Cc, MR, dx, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, jc + jr, ic + ir);
               // gemm_base_Cresident( orderC, mr, nr, kc, alpha, &Ac[ir*kc], MR, &Bc[jr*kc], NR, betaI, Cptr, ldC );
 	    // gemm_microkernel_Cresident_neon_4x4_prefetch( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC );
