@@ -178,6 +178,6 @@ void sconvGemmNCHW_back(unsigned b, unsigned c, unsigned h, unsigned w,
     free(aux2);
 #else
     cntx_t *cntx = bli_gks_query_cntx();
-    gemm_back_nchw_B3A2C0('C', 'C', 'C', 'N', 'T', b * ho * wo, c * kh * kw, kn, alpha, aux2, b * ho * wo, weights, c * kh * kw, 1.0, NULL, b * ho * wo, ac_pack, bc_pack, cc_pack, cntx, dx, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+    gemm_back_nchw_B3A2C0('C', 'C', 'C', 'N', 'T', b * ho * wo, c * kh * kw, kn, alpha, dy, b * ho * wo, weights, c * kh * kw, 1.0, NULL, b * ho * wo, ac_pack, bc_pack, cc_pack, cntx, dx, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
 #endif
 }
