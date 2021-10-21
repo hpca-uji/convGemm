@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include "convGemm.h"
 #include "im2col_nchw.h"
 
 #define min(a,b) (((a)<(b))?(a):(b))
 #define Mcol(a1,a2)  M[ (a2)*(ldM)+(a1) ]
 
-void pack_RB_nchw(char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const float *in, int batch, int channel, int height, int width, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation, int start_i, int start_j)
+void pack_RB_nchw(char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const float *in, const convol_dim *d, int start_i, int start_j)
 {
 /*
   BLIS pack for M-->Mc using implicit im2col
@@ -14,9 +15,9 @@ void pack_RB_nchw(char orderM, char transM, int mc, int nc, const float *M, int 
     if (((transM == 'N') && (orderM == 'C')) || ((transM == 'T') && (orderM == 'R')))
     {
         // initial kernel positions
-        int start_ky =  start_j % kwidth;
-        int start_kx = (start_j / kwidth) % kheight;
-        int start_c  = (start_j / kwidth) / kheight;
+        int start_ky =  start_j % d->kwidth;
+        int start_kx = (start_j / d->kwidth) % d->kheight;
+        int start_c  = (start_j / d->kwidth) / d->kheight;
         // #pragma omp parallel for
         for (int i = 0; i < mc; i += RR) {
             int k  = i * nc;
@@ -25,9 +26,9 @@ void pack_RB_nchw(char orderM, char transM, int mc, int nc, const float *M, int 
             int kx = start_kx;
             int c  = start_c;
             // initial pixel positions
-            int start_y  =  (start_i + i) % owidth;
-            int start_x  = ((start_i + i) / owidth) % oheight;
-            int start_b  = ((start_i + i) / owidth) / oheight;
+            int start_y  =  (start_i + i) % d->owidth;
+            int start_x  = ((start_i + i) / d->owidth) % d->oheight;
+            int start_b  = ((start_i + i) / d->owidth) / d->oheight;
             for (int j = 0; j < nc; j++) {
                 int y  = start_y;
                 int x  = start_x;
@@ -35,15 +36,15 @@ void pack_RB_nchw(char orderM, char transM, int mc, int nc, const float *M, int 
                 int ii = 0;
                 for ( ; ii < rr; ii++) {
                     // Mc[k] = Mcol(i+ii,j);
-                    int ix = vstride * x + vdilation * kx - vpadding;
-                    int iy = hstride * y + hdilation * ky - hpadding;
-                    if (0 <= ix && ix < height && 0 <= iy && iy < width) {
-                        Mc[k] = in[((b * channel + c) * height + ix) * width + iy];
+                    int ix = d->vstride * x + d->vdilation * kx - d->vpadding;
+                    int iy = d->hstride * y + d->hdilation * ky - d->hpadding;
+                    if (0 <= ix && ix < d->height && 0 <= iy && iy < d->width) {
+                        Mc[k] = in[((b * d->channel + c) * d->height + ix) * d->width + iy];
                     } else Mc[k] = 0.0;
                     k++;
                     // next pixel position
-                    y++; if (y >= owidth) { y = 0;
-                    x++; if (x >= oheight) { x = 0;
+                    y++; if (y >= d->owidth) { y = 0;
+                    x++; if (x >= d->oheight) { x = 0;
                     b++; } }
                 }
                 for ( ; ii < RR; ii++) {
@@ -52,15 +53,15 @@ void pack_RB_nchw(char orderM, char transM, int mc, int nc, const float *M, int 
                 }
                 // k += (RR-rr);
                 // next kernel position
-                ky++; if (ky >= kwidth) { ky = 0;
-                kx++; if (kx >= kheight) { kx = 0;
+                ky++; if (ky >= d->kwidth) { ky = 0;
+                kx++; if (kx >= d->kheight) { kx = 0;
                 c++; } }
             }
         }
     } else {
-        int start_y =  start_j % owidth;
-        int start_x = (start_j / owidth) % oheight;
-        int start_b = (start_j / owidth) / oheight;
+        int start_y =  start_j % d->owidth;
+        int start_x = (start_j / d->owidth) % d->oheight;
+        int start_b = (start_j / d->owidth) / d->oheight;
         // #pragma omp parallel for
         for (int i = 0; i < mc; i += RR) {
             int k  = i*nc;
@@ -68,9 +69,9 @@ void pack_RB_nchw(char orderM, char transM, int mc, int nc, const float *M, int 
             int y  = start_y;
             int x  = start_x;
             int b  = start_b;
-            int start_ky =  (start_i + i) % kwidth;
-            int start_kx = ((start_i + i) / kwidth) % kheight;
-            int start_c  = ((start_i + i) / kwidth) / kheight;
+            int start_ky =  (start_i + i) % d->kwidth;
+            int start_kx = ((start_i + i) / d->kwidth) % d->kheight;
+            int start_c  = ((start_i + i) / d->kwidth) / d->kheight;
             for (int j = 0; j < nc; j++) {
                 int ky = start_ky;
                 int kx = start_kx;
@@ -78,15 +79,15 @@ void pack_RB_nchw(char orderM, char transM, int mc, int nc, const float *M, int 
                 int ii = 0;
                 for ( ; ii < rr; ii++) {
                     // Mc[k] = Mcol(j,i+ii);
-                    int ix = vstride * x + vdilation * kx - vpadding;
-                    int iy = hstride * y + hdilation * ky - hpadding;
-                    if (0 <= ix && ix < height && 0 <= iy && iy < width) {
-                        Mc[k] = in[((b * channel + c) * height + ix) * width + iy];
+                    int ix = d->vstride * x + d->vdilation * kx - d->vpadding;
+                    int iy = d->hstride * y + d->hdilation * ky - d->hpadding;
+                    if (0 <= ix && ix < d->height && 0 <= iy && iy < d->width) {
+                        Mc[k] = in[((b * d->channel + c) * d->height + ix) * d->width + iy];
                     } else Mc[k] = 0.0;
                     k++;
                     // next kernel position
-                    ky++; if (ky >= kwidth) { ky = 0;
-                    kx++; if (kx >= kheight) { kx = 0;
+                    ky++; if (ky >= d->kwidth) { ky = 0;
+                    kx++; if (kx >= d->kheight) { kx = 0;
                     c++; } }
                 }
                 for ( ; ii < RR; ii++) {
@@ -95,8 +96,8 @@ void pack_RB_nchw(char orderM, char transM, int mc, int nc, const float *M, int 
                 }
                 // k += (RR-rr);
                 // next pixel position
-                y++; if (y >= owidth) { y = 0;
-                x++; if (x >= oheight) { x = 0;
+                y++; if (y >= d->owidth) { y = 0;
+                x++; if (x >= d->oheight) { x = 0;
                 b++; } }
             }
         }
@@ -183,7 +184,7 @@ void transpose_nchw(int rows, int cols, const float *in, int ld, float beta, flo
     }
 }
 
-void pack_CB_nchw_trans(char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, int kn, int ho, int wo, int start_row, int start_col)
+void pack_CB_nchw_trans(char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const convol_dim *d, int start_row, int start_col)
 {
 /*
   BLIS pack for M-->Mc transposing first and second tensor dimensions
@@ -199,10 +200,10 @@ void pack_CB_nchw_trans(char orderM, char transM, int mc, int nc, const float *M
                     // Mc[k] = M[start_row + i + (start_col + j + jj) * ldM];
                     // Mc[k] = M[(z * ho + x) * wo + y + (start_col + j + jj) * batch * ho * wo];
                     // Mc[k] = M[(((start_col + j + jj) * batch + z) * ho + x) * wo + y];
-                    int y =  (start_row + i) % wo;
-                    int x = ((start_row + i) / wo) % ho;
-                    int b = ((start_row + i) / wo) / ho;
-                    Mc[k] = M[((b * kn + (start_col + j + jj)) * ho + x) * wo + y];
+                    int y =  (start_row + i) % d->owidth;
+                    int x = ((start_row + i) / d->owidth) % d->oheight;
+                    int b = ((start_row + i) / d->owidth) / d->oheight;
+                    Mc[k] = M[((b * d->kn + (start_col + j + jj)) * d->oheight + x) * d->owidth + y];
                     k++;
                 }
                 for (; jj < RR; jj++) {
@@ -233,7 +234,7 @@ void pack_CB_nchw_trans(char orderM, char transM, int mc, int nc, const float *M
     }
 }
 
-void pack_RB_nchw_trans( char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, int kn, int ho, int wo, int start_row, int start_col)
+void pack_RB_nchw_trans( char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const convol_dim *d, int start_row, int start_col)
 {
 /*
   BLIS pack for M-->Mc transposing first and second tensor dimensions
@@ -247,10 +248,10 @@ void pack_RB_nchw_trans( char orderM, char transM, int mc, int nc, const float *
                 for (; ii < rr; ii++) {
                     // Mc[k] = Mcol(i + ii, j);
                     // Mc[k] = M[start_row + i + ii + (start_col + j) * ldM];
-                    int y =  (start_row + i + ii) % wo;
-                    int x = ((start_row + i + ii) / wo) % ho;
-                    int b = ((start_row + i + ii) / wo) / ho;
-                    Mc[k] = M[((b * kn + (start_col + j)) * ho + x) * wo + y];
+                    int y =  (start_row + i + ii) % d->owidth;
+                    int x = ((start_row + i + ii) / d->owidth) % d->oheight;
+                    int b = ((start_row + i + ii) / d->owidth) / d->oheight;
+                    Mc[k] = M[((b * d->kn + (start_col + j)) * d->oheight + x) * d->owidth + y];
                     k++;
                 }
                 for (; ii < RR; ii++) {

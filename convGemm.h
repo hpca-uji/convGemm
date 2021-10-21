@@ -1,9 +1,3 @@
-// void sgemm_(char *transa, char *transb, int *m, int *n, int *k, float *alpha, const float *a, int *lda, const float *b, int *ldb, float *beta, float *c, int *ldc);
-
-static inline void sgemm(char transa, char transb, int m, int n, int k, float alpha, const float *a, int lda, const float *b, int ldb, float beta, float *c, int ldc) {
-    sgemm_(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-}
-
 int alloc_pack_buffs(float** Ac_pack, float** Bc_pack, float** Cc_pack);
 
 void sconvGemmNHWC(char trans,
@@ -45,3 +39,9 @@ void sconvGemmNCHW_back(unsigned b, unsigned c, unsigned h, unsigned w,
                         float alpha, const float *weights,
                         const float *dy, float *dx,
                         float *ac_pack, float *bc_pack, float *cc_pack);
+
+typedef struct {
+    int batch, height, width, channel, kn, kheight, kwidth, vstride, hstride, vpadding, hpadding, vdilation, hdilation, oheight, owidth;
+} convol_dim;
+
+typedef void (*pack_func)(char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const convol_dim *d, int start_row, int start_col);

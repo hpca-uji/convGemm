@@ -35,6 +35,7 @@
 
 #include <blis.h>
 #include "gemm_blis.h"
+#include "convGemm.h"
 #include "gemm_nchw.h"
 #include "im2col_nchw.h"
 
@@ -58,7 +59,7 @@ void gemm_nchw_B3A2C0( char orderA, char orderB, char orderC,
 		                    const float *B, int ldB, 
 		       float beta,  float *C, int ldC, 
 		       float *Ac, float *Bc, float *Cc, cntx_t *cntx,
-                       const float *in, int b, int c, int h, int w, int ho, int wo, int kh, int kw, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation, const float *bias_vector)
+                       const float *in, const convol_dim *dim, const float *bias_vector)
 {
   int    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr; 
   float  zero = 0.0, one = 1.0, betaI; 
@@ -108,7 +109,7 @@ void gemm_nchw_B3A2C0( char orderA, char orderB, char orderC,
       if (transA == 'N')
         pack_CB( orderB, transB, kc, nc, Bptr, ldB, Bc, NR);
       else
-        pack_CB_nchw_trans(orderB, transB, kc, nc, B, ldB, Bc, NR, n /* kn */, ho, wo, pc, jc);
+        pack_CB_nchw_trans(orderB, transB, kc, nc, B, ldB, Bc, NR, dim, pc, jc);
       END_TIMER(t_pack)
 
       if ( pc==0 )
@@ -129,7 +130,7 @@ void gemm_nchw_B3A2C0( char orderA, char orderB, char orderC,
           Aptr = &Arow(pc,ic);
         BEGIN_TIMER
         // pack_RB( orderA, transA, mc, kc, Aptr, ldA, Ac, MR);
-        pack_RB_nchw( orderA, transA, mc, kc, Aptr, ldA, Ac, MR, in, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, ic, pc);
+        pack_RB_nchw( orderA, transA, mc, kc, Aptr, ldA, Ac, MR, in, dim, ic, pc);
         END_TIMER(t_pack)
         
         for ( jr=0; jr<nc; jr+=NR ) {
@@ -156,7 +157,7 @@ void gemm_nchw_B3A2C0( char orderA, char orderB, char orderC,
                         Cc[j * MR + i] += bias_vector[jc + jr + j];
               }
               if (transA == 'N') {
-                transpose_nchw(mr, nr, Cc, MR, betaI, C, n /* kn */, ho, wo, ic + ir, jc + jr);
+                transpose_nchw(mr, nr, Cc, MR, betaI, C, dim->kn, dim->oheight, dim->owidth, ic + ir, jc + jr);
               } else {
                 for (int j = 0; j < nr; j++)
                     for (int i = 0; i < mr; i++)

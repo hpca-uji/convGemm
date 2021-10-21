@@ -1,3 +1,7 @@
+static inline void sgemm(char transa, char transb, int m, int n, int k, float alpha, const float *a, int lda, const float *b, int ldb, float beta, float *c, int ldc) {
+        sgemm_(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
+}
+
 static inline float *random_alloc(int n)
 {
     float *a = malloc(n * sizeof(float));
@@ -50,4 +54,4 @@ static inline bool check(int n, float *a, float *b)
     int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1; \
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1; \
     printf("%d %d %d %d %d %d %d %d %d %d %d %d %d ", b, h, w, c, kn, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation); \
-
+    convol_dim dim = { b, h, w, c, kn, kh, kw, vstride, hstride, vpadding, hpadding, vdilation, hdilation, ho, wo };

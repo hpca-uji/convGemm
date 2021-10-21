@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     t1 = get_time();
     sgemm('N', 'T', kn, kh * kw * c, ho * wo * b, alpha, out, kn, aux, kh * kw * c, beta, kernel_gemm, kn);
     t2 = get_time();
-    gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, out, kn, NULL, kh * kw * c, beta, kernel, kn, ac_pack, bc_pack, cc_pack, cntx, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, NULL);
+    gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, out, kn, NULL, kh * kw * c, beta, kernel, kn, ac_pack, bc_pack, cc_pack, cntx, image, &dim, NULL);
     double t3 = get_time();
     double t_gemm = t2 - t1;
     double t_nhwc = t3 - t2;
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
     t2 = get_time();
     sgemm('T', 'N', kh * kw * c, kn, ho * wo * b, alpha, aux, ho * wo * b, aux_trans, ho * wo * b, beta, kernel_gemm, kh * kw * c);
     t3 = get_time();
-    gemm_nchw_B3A2C0('C', 'C', 'C', 'T', 'N', kh * kw * c, kn, ho * wo * b, alpha, NULL, ho * wo * b, out, ho * wo * b, beta, kernel, kh * kw * c, ac_pack, bc_pack, cc_pack, cntx, image, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, NULL);
+    gemm_nchw_B3A2C0('C', 'C', 'C', 'T', 'N', kh * kw * c, kn, ho * wo * b, alpha, NULL, ho * wo * b, out, ho * wo * b, beta, kernel, kh * kw * c, ac_pack, bc_pack, cc_pack, cntx, image, &dim, NULL);
     double t4 = get_time();
     double t_extra = t2 - t1;
     t_gemm = t3 - t2;

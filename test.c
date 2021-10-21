@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
         for(int i = 0; i < kn; i++)
             out_gemm[i + j * kn] += bias_vector[i];
     double t3 = get_time();
-    gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, NULL, kh * kw * c, beta, out, kn, ac_pack, bc_pack, cc_pack, cntx, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, bias_vector);
+    gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, NULL, kh * kw * c, beta, out, kn, ac_pack, bc_pack, cc_pack, cntx, image, &dim, bias_vector);
     double t4 = get_time();
     double t_gemm = t2 - t1;
     double t_extra = t3 - t2;
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
                 for (int y = 0; y < wo; y++)
                     out_gemm[((i * kn + j) * ho + x) * wo + y] = aux_trans[((j * b + i) * ho + x) * wo + y];
     t3 = get_time();
-    gemm_nchw_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, NULL, ho * wo * b, kernel, kh * kw * c, beta, out, ho * wo * b, ac_pack, bc_pack, cc_pack, cntx, image, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, bias_vector);
+    gemm_nchw_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, NULL, ho * wo * b, kernel, kh * kw * c, beta, out, ho * wo * b, ac_pack, bc_pack, cc_pack, cntx, image, &dim, bias_vector);
     t4 = get_time();
     t_gemm = t2 - t1;
     t_extra = t3 - t2;

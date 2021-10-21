@@ -35,6 +35,7 @@
 
 #include <blis.h>
 #include "gemm_blis.h"
+#include "convGemm.h"
 #include "gemm_back_nchw.h"
 #include "im2col_nchw.h"
 
@@ -60,6 +61,7 @@ void gemm_back_nchw_B3A2C0( char orderA, char orderB, char orderC,
 		       float *Ac, float *Bc, float *Cc, cntx_t *cntx,
                        float *dx, int b, int c, int h, int w, int ho, int wo, int kh, int kw, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
 {
+    convol_dim dim = { b, h, w, c, k /* kn */, kh, kw, vstride, hstride, vpadding, hpadding, vdilation, hdilation, ho, wo };
   int    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr; 
   float  zero = 0.0, one = 1.0, betaI; 
   const float *Aptr, *Bptr;
@@ -126,7 +128,7 @@ void gemm_back_nchw_B3A2C0( char orderA, char orderB, char orderC,
           Aptr = &Arow(pc,ic);
         BEGIN_TIMER
         // pack_RB( orderA, transA, mc, kc, Aptr, ldA, Ac, MR);
-        pack_RB_nchw_trans( orderA, transA, mc, kc, A, ldA, Ac, MR, k /* kn */, ho, wo, ic, pc);
+        pack_RB_nchw_trans( orderA, transA, mc, kc, A, ldA, Ac, MR, &dim, ic, pc);
         END_TIMER(t_pack)
         
         for ( jr=0; jr<nc; jr+=NR ) {

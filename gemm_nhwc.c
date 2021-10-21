@@ -35,6 +35,7 @@
 
 #include <blis.h>
 #include "gemm_blis.h"
+#include "convGemm.h"
 #include "gemm_nhwc.h"
 #include "im2row_nhwc.h"
 
@@ -58,7 +59,7 @@ void gemm_nhwc_B3A2C0( char orderA, char orderB, char orderC,
 		                    const float *B, int ldB, 
 		       float beta, float *C, int ldC, 
                        float *Ac, float *Bc, float *Cc, cntx_t *cntx,
-                       const float *in, int b, int h, int w, int c, int ho, int wo, int kh, int kw, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation, const float *bias_vector)
+                       const float *in, const convol_dim *dim, const float *bias_vector)
 {
   int    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr; 
   float  zero = 0.0, one = 1.0, betaI; 
@@ -106,7 +107,7 @@ void gemm_nhwc_B3A2C0( char orderA, char orderB, char orderC,
         Bptr = &Brow(jc,pc);
       BEGIN_TIMER
       // pack_CB( orderB, transB, kc, nc, Bptr, ldB, Bc, NR);
-      pack_CB_nhwc( orderB, transB, kc, nc, Bptr, ldB, Bc, NR, in, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, pc, jc);
+      pack_CB_nhwc( orderB, transB, kc, nc, Bptr, ldB, Bc, NR, in, dim, pc, jc);
       END_TIMER(t_pack)
 
       /* if ( pc==0 )
