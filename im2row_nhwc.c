@@ -7,7 +7,7 @@
 #define min(a,b) (((a)<(b))?(a):(b))
 #define Mcol(a1,a2)  M[ (a2)*(ldM)+(a1) ]
 
-void pack_CB_nhwc(char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const float *in, const convol_dim *d, int start_i, int start_j)
+void pack_CB_nhwc(char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const convol_dim *d, int start_i, int start_j)
 {
 /*
   BLIS pack for M-->Mc using implicit im2row
@@ -39,7 +39,7 @@ void pack_CB_nhwc(char orderM, char transM, int mc, int nc, const float *M, int 
                     int ix = d->vstride * x + d->vdilation * kx - d->vpadding;
                     int iy = d->hstride * y + d->hdilation * ky - d->hpadding;
                     if (0 <= ix && ix < d->height && 0 <= iy && iy < d->width) {
-                        Mc[k] = in[((b * d->height + ix) * d->width + iy) * d->channel + c];
+                        Mc[k] = M[((b * d->height + ix) * d->width + iy) * d->channel + c];
                     } else Mc[k] = 0.0;
                     k++;
                     // next pixel position
@@ -82,7 +82,7 @@ void pack_CB_nhwc(char orderM, char transM, int mc, int nc, const float *M, int 
                     int ix = d->vstride * x + d->vdilation * kx - d->vpadding;
                     int iy = d->hstride * y + d->hdilation * ky - d->hpadding;
                     if (0 <= ix && ix < d->height && 0 <= iy && iy < d->width) {
-                        Mc[k] = in[((b * d->height + ix) * d->width + iy) * d->channel + c];
+                        Mc[k] = M[((b * d->height + ix) * d->width + iy) * d->channel + c];
                     } else Mc[k] = 0.0;
                     k++;
                     // next kernel position

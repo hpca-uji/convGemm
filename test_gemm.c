@@ -4,6 +4,7 @@
 
 #include <blis.h>
 
+#include "convGemm.h"
 #include "gemm_blis.h"
 
 // void sgemm_(char *transa, char *transb, int *m, int *n, int *k, float *alpha, const float *a, int *lda, const float *b, int *ldb, float *beta, float *c, int *ldc);

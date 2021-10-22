@@ -69,9 +69,9 @@ void sconvGemmNHWC(char trans,
     cntx_t *cntx = bli_gks_query_cntx();
     convol_dim dim = { b, h, w, c, kn, kh, kw, vstride, hstride, vpadding, hpadding, vdilation, hdilation, ho, wo };
     if (trans == 'N') {
-        gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, in, kn, NULL, kh * kw * c, beta, out, kn, ac_pack, bc_pack, cc_pack, cntx, x, &dim, bias_vector);
+        gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, in, kn, x, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, cc_pack, cntx, &dim, bias_vector);
     } else {
-        gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, in, kn, NULL, kh * kw * c, beta, out, kn, ac_pack, bc_pack, cc_pack, cntx, x, &dim, NULL);
+        gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, in, kn, x, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, cc_pack, cntx, &dim, NULL);
     }
 #endif
 }
@@ -148,9 +148,9 @@ void sconvGemmNCHW(char trans,
 #else
     convol_dim dim = { b, h, w, c, kn, kh, kw, vstride, hstride, vpadding, hpadding, vdilation, hdilation, ho, wo };
     if (trans == 'N') {
-        gemm_nchw_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, x, ho * wo * b, in, kh * kw * c, beta, out, ho * wo * b, ac_pack, bc_pack, cc_pack, cntx, x, &dim, bias_vector);
+        gemm_nchw_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, x, ho * wo * b, in, kh * kw * c, beta, out, ho * wo * b, ac_pack, pack_RB_nchw, bc_pack, pack_CB, cc_pack, cntx, &dim, bias_vector);
     } else {
-        gemm_nchw_B3A2C0('C', 'C', 'C', 'T', 'N', kh * kw * c, kn, ho * wo * b, alpha, x, ho * wo * b, in, ho * wo * b, beta, out, kh * kw * c, ac_pack, bc_pack, cc_pack, cntx, x, &dim, bias_vector);
+        gemm_nchw_B3A2C0('C', 'C', 'C', 'T', 'N', kh * kw * c, kn, ho * wo * b, alpha, x, ho * wo * b, in, ho * wo * b, beta, out, kh * kw * c, ac_pack, pack_RB_nchw, bc_pack, pack_CB_nchw_trans, cc_pack, cntx, &dim, NULL);
     }
 #endif
 }

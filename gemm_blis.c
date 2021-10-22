@@ -34,6 +34,8 @@
 // #include <arm_neon.h>
 
 #include <blis.h>
+
+#include "convGemm.h"
 #include "gemm_blis.h"
 
 #define min(a,b) (((a)<(b))?(a):(b))
@@ -92,16 +94,8 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
     for ( pc=0; pc<k; pc+=KC ) {
       kc = min(k-pc, KC); 
 
-      if ( (transB=='N')&&(orderB=='C') )
-        Bptr = &Bcol(pc,jc);
-      else if ( (transB=='N')&&(orderB=='R') )
-        Bptr = &Brow(pc,jc);
-      else if ( (transB=='T')&&(orderB=='C') )
-        Bptr = &Bcol(jc,pc);
-      else
-        Bptr = &Brow(jc,pc);
       BEGIN_TIMER
-      pack_CB( orderB, transB, kc, nc, Bptr, ldB, Bc, NR);
+      pack_CB( orderB, transB, kc, nc, B, ldB, Bc, NR, NULL, pc, jc);
       END_TIMER(t_pack)
 
       if ( pc==0 )
@@ -112,16 +106,8 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
       for ( ic=0; ic<m; ic+=MC ) {
         mc = min(m-ic, MC); 
 
-        if ( (transA=='N')&&(orderA=='C') )
-          Aptr = &Acol(ic,pc);
-        else if ( (transA=='N')&&(orderA=='R') )
-          Aptr = &Arow(ic,pc);
-        else if ( (transA=='T')&&(orderA=='C') )
-          Aptr = &Acol(pc,ic);
-        else
-          Aptr = &Arow(pc,ic);
         BEGIN_TIMER
-        pack_RB( orderA, transA, mc, kc, Aptr, ldA, Ac, MR);
+        pack_RB( orderA, transA, mc, kc, A, ldA, Ac, MR, NULL, ic, pc);
         END_TIMER(t_pack)
         
         for ( jr=0; jr<nc; jr+=NR ) {
@@ -156,11 +142,20 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
   }
 }
 
-void pack_RB( char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR ){
+void pack_RB( char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const convol_dim *d, int start_row, int start_col ){
 /*
   BLIS pack for M-->Mc
 */
   int    i, j, ii, k, rr;
+
+  if ( (transM=='N')&&(orderM=='C') )
+    M = &Mcol(start_row, start_col);
+  else if ( (transM=='N')&&(orderM=='R') )
+    M = &Mrow(start_row, start_col);
+  else if ( (transM=='T')&&(orderM=='C') )
+    M = &Mcol(start_col, start_row);
+  else
+    M = &Mrow(start_col, start_row);
 
   if ( ((transM=='N')&&( orderM=='C'))||
        ((transM=='T')&&( orderM=='R')) )
@@ -199,11 +194,20 @@ void pack_RB( char orderM, char transM, int mc, int nc, const float *M, int ldM,
     }
 }
 
-void pack_CB( char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR ){
+void pack_CB( char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const convol_dim *dim, int start_row, int start_col ){
 /*
   BLIS pack for M-->Mc
 */
   int    i, j, jj, k, nr;
+
+  if ( (transM=='N')&&(orderM=='C') )
+    M = &Mcol(start_row, start_col);
+  else if ( (transM=='N')&&(orderM=='R') )
+    M = &Mrow(start_row, start_col);
+  else if ( (transM=='T')&&(orderM=='C') )
+    M = &Mcol(start_col, start_row);
+  else
+    M = &Mrow(start_col, start_row);
 
   k = 0;
   if ( ((transM=='N')&&( orderM=='C'))||

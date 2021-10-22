@@ -34,8 +34,9 @@
 // #include <arm_neon.h>
 
 #include <blis.h>
-#include "gemm_blis.h"
+
 #include "convGemm.h"
+#include "gemm_blis.h"
 #include "gemm_back_nchw.h"
 #include "im2col_nchw.h"
 
@@ -64,7 +65,6 @@ void gemm_back_nchw_B3A2C0( char orderA, char orderB, char orderC,
     convol_dim dim = { b, h, w, c, k /* kn */, kh, kw, vstride, hstride, vpadding, hpadding, vdilation, hdilation, ho, wo };
   int    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr; 
   float  zero = 0.0, one = 1.0, betaI; 
-  const float *Aptr, *Bptr;
   float *Cptr;
 
   sgemm_ukr_ft gemm_kernel = bli_cntx_get_l3_nat_ukr_dt(BLIS_FLOAT, BLIS_GEMM, cntx);
@@ -98,16 +98,8 @@ void gemm_back_nchw_B3A2C0( char orderA, char orderB, char orderC,
     for ( pc=0; pc<k; pc+=KC ) {
       kc = min(k-pc, KC); 
 
-      if ( (transB=='N')&&(orderB=='C') )
-        Bptr = &Bcol(pc,jc);
-      else if ( (transB=='N')&&(orderB=='R') )
-        Bptr = &Brow(pc,jc);
-      else if ( (transB=='T')&&(orderB=='C') )
-        Bptr = &Bcol(jc,pc);
-      else
-        Bptr = &Brow(jc,pc);
       BEGIN_TIMER
-      pack_CB( orderB, transB, kc, nc, Bptr, ldB, Bc, NR);
+      pack_CB( orderB, transB, kc, nc, B, ldB, Bc, NR, &dim, pc, jc);
       END_TIMER(t_pack)
 
       /* if ( pc==0 )
@@ -118,14 +110,6 @@ void gemm_back_nchw_B3A2C0( char orderA, char orderB, char orderC,
       for ( ic=0; ic<m; ic+=MC ) {
         mc = min(m-ic, MC); 
 
-        if ( (transA=='N')&&(orderA=='C') )
-          Aptr = &Acol(ic,pc);
-        else if ( (transA=='N')&&(orderA=='R') )
-          Aptr = &Arow(ic,pc);
-        else if ( (transA=='T')&&(orderA=='C') )
-          Aptr = &Acol(pc,ic);
-        else
-          Aptr = &Arow(pc,ic);
         BEGIN_TIMER
         // pack_RB( orderA, transA, mc, kc, Aptr, ldA, Ac, MR);
         pack_RB_nchw_trans( orderA, transA, mc, kc, A, ldA, Ac, MR, &dim, ic, pc);
