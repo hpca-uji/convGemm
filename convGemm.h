@@ -45,3 +45,5 @@ typedef struct {
 } convol_dim;
 
 typedef void (*pack_func)(char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const convol_dim *d, int start_row, int start_col);
+
+typedef void (*post_func)(int mr, int nr, float *Cc, float beta, float *C, int ldC, const convol_dim *dim, const float *bias_vector, int start_row, int start_col, bool last);

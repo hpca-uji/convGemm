@@ -1,14 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include <blis.h>
 
 #include "convGemm.h"
 #include "gemm_blis.h"
-#include "gemm_nhwc.h"
 #include "gemm_back_nhwc.h"
 #include "im2row_nhwc.h"
-#include "gemm_nchw.h"
 #include "gemm_back_nchw.h"
 #include "im2col_nchw.h"
 
@@ -48,32 +47,13 @@ void sconvGemmNHWC(char trans,
 
     int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1;
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
-#if 0
-    float *aux = (float *) calloc(c * kh * kw * ho * wo * b, sizeof(float));
-    im2row_nhwc(aux, c * kh * kw, x, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
-    if (trans == 'N') {
-        sgemm('N', 'N', kn, ho * wo * b, kh * kw * c, alpha, in, kn, aux, kh * kw * c, beta, out, kn);
-        // gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, in, kn, aux, kh * kw * c, beta, out, kn, ac_pack, bc_pack);
-        if (bias_vector) {
-            // #pragma omp parallel for
-            for(int j = 0; j < ho * wo * b; j++)
-                for(int i = 0; i < kn; i++)
-                    out[i + j * kn] += bias_vector[i];
-        }
-    } else {
-        sgemm('N', 'T', kn, kh * kw * c, ho * wo * b, alpha, in, kn, aux, kh * kw * c, beta, out, kn);
-        // gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, in, kn, aux, kh * kw * c, beta, out, kn, ac_pack, bc_pack);
-    }
-    free(aux);
-#else
     cntx_t *cntx = bli_gks_query_cntx();
     convol_dim dim = { b, h, w, c, kn, kh, kw, vstride, hstride, vpadding, hpadding, vdilation, hdilation, ho, wo };
     if (trans == 'N') {
-        gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, in, kn, x, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, cc_pack, cntx, &dim, bias_vector);
+        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, in, kn, x, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, cc_pack, bias_vector == NULL ? NULL : add_bias_nhwc, cntx, &dim, bias_vector);
     } else {
-        gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, in, kn, x, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, cc_pack, cntx, &dim, NULL);
+        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, in, kn, x, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, cc_pack, NULL, cntx, &dim, NULL);
     }
-#endif
 }
 
 void sconvGemmNHWC_back(unsigned b, unsigned h, unsigned w, unsigned c,
@@ -115,44 +95,12 @@ void sconvGemmNCHW(char trans,
     cntx_t *cntx = bli_gks_query_cntx();
     int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1;
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
-#if 0
-    float *aux  = (float *) calloc(c * kh * kw * ho * wo * b, sizeof(float));
-    float *aux2 = (float *) calloc(kn * ho * wo * b, sizeof(float));
-    im2col_nchw(aux, b * ho * wo, x, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
-    if (trans == 'N') {
-        sgemm('N', 'N', ho * wo * b, kn, kh * kw * c, alpha, aux, ho * wo * b, in, kh * kw * c, beta, aux2, ho * wo * b);
-        // gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, aux, ho * wo * b, in, kh * kw * c, beta, aux2, ho * wo * b, ac_pack, bc_pack, cc_pack, cntx);
-        if (bias_vector) { // add bias
-            // #pragma omp parallel for
-            for(int i = 0; i < kn; i++)
-                for(int j = 0; j < ho * wo * b; j++)
-                    aux2[i * ho * wo * b + j] += bias_vector[i];
-        }
-        // transpose first and second dimension
-        for (int i = 0; i < b; i++)
-            for (int j = 0; j < kn; j++)
-                for (int x = 0; x < ho; x++)
-                    for (int y = 0; y < wo; y++)
-                        out[((i * kn + j) * ho + x) * wo + y] = aux2[((j * b + i) * ho + x) * wo + y];
-    } else {
-        // transpose first and second dimension
-        for (int i = 0; i < kn; i++)
-            for (int j = 0; j < b; j++)
-                for (int x = 0; x < ho; x++)
-                    for (int y = 0; y < wo; y++)
-                        aux2[((i * b + j) * ho + x) * wo + y] = in[((j * kn + i) * ho + x) * wo + y];
-        sgemm('T', 'N', kh * kw * c, kn, ho * wo * b, alpha, aux, ho * wo * b, aux2, ho * wo * b, beta, out, kh * kw * c);
-    }
-    free(aux);
-    free(aux2);
-#else
     convol_dim dim = { b, h, w, c, kn, kh, kw, vstride, hstride, vpadding, hpadding, vdilation, hdilation, ho, wo };
     if (trans == 'N') {
-        gemm_nchw_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, x, ho * wo * b, in, kh * kw * c, beta, out, ho * wo * b, ac_pack, pack_RB_nchw, bc_pack, pack_CB, cc_pack, cntx, &dim, bias_vector);
+        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, x, ho * wo * b, in, kh * kw * c, beta, out, ho * wo * b, ac_pack, pack_RB_nchw, bc_pack, pack_CB, cc_pack, add_bias_nchw, cntx, &dim, bias_vector);
     } else {
-        gemm_nchw_B3A2C0('C', 'C', 'C', 'T', 'N', kh * kw * c, kn, ho * wo * b, alpha, x, ho * wo * b, in, ho * wo * b, beta, out, kh * kw * c, ac_pack, pack_RB_nchw, bc_pack, pack_CB_nchw_trans, cc_pack, cntx, &dim, NULL);
+        gemm_blis_B3A2C0('C', 'C', 'C', 'T', 'N', kh * kw * c, kn, ho * wo * b, alpha, x, ho * wo * b, in, ho * wo * b, beta, out, kh * kw * c, ac_pack, pack_RB_nchw, bc_pack, pack_CB_nchw_trans, cc_pack, NULL, cntx, &dim, NULL);
     }
-#endif
 }
 
 void sconvGemmNCHW_back(unsigned b, unsigned c, unsigned h, unsigned w,

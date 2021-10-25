@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include <assert.h>
 
 #include "convGemm.h"
@@ -357,4 +358,14 @@ void col2im_nchw(int m, int n, const float *cols, int ld, float *out, int batch,
         c++; } }
     }
 #endif
+}
+
+void add_bias_nchw(int mr, int nr, float *Cc, float beta, float *C, int ldC, const convol_dim *dim, const float *bias_vector, int start_row, int start_col, bool last)
+{
+    if (last && bias_vector) {
+        for (int j = 0; j < nr; j++)
+            for (int i = 0; i < mr; i++)
+                Cc[j * mr + i] += bias_vector[start_col + j];
+    }
+    transpose_nchw(mr, nr, Cc, mr, beta, C, dim->kn, dim->oheight, dim->owidth, start_row, start_col);
 }

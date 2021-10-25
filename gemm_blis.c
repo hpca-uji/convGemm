@@ -56,11 +56,13 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
                        int m, int n, int k, 
                        float alpha, const float *A, int ldA, 
 		                    const float *B, int ldB, 
-		       float beta,  float *C, int ldC, 
-		       float *Ac, float *Bc, float *Cc, cntx_t *cntx ){
+		       float beta, float *C, int ldC, 
+                       float *Ac, pack_func pack_RB,  float *Bc, pack_func pack_CB, float *Cc,
+                       post_func postprocess, cntx_t *cntx,
+                       const convol_dim *dim, const float *bias_vector)
+{
   int    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr; 
   float  zero = 0.0, one = 1.0, betaI; 
-  const float *Aptr, *Bptr;
   float *Cptr;
 
   sgemm_ukr_ft gemm_kernel = bli_cntx_get_l3_nat_ukr_dt(BLIS_FLOAT, BLIS_GEMM, cntx);
@@ -95,7 +97,7 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
       kc = min(k-pc, KC); 
 
       BEGIN_TIMER
-      pack_CB( orderB, transB, kc, nc, B, ldB, Bc, NR, NULL, pc, jc);
+      pack_CB( orderB, transB, kc, nc, B, ldB, Bc, NR, dim, pc, jc);
       END_TIMER(t_pack)
 
       if ( pc==0 )
@@ -107,7 +109,7 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
         mc = min(m-ic, MC); 
 
         BEGIN_TIMER
-        pack_RB( orderA, transA, mc, kc, A, ldA, Ac, MR, NULL, ic, pc);
+        pack_RB( orderA, transA, mc, kc, A, ldA, Ac, MR, dim, ic, pc);
         END_TIMER(t_pack)
         
         for ( jr=0; jr<nc; jr+=NR ) {
@@ -120,20 +122,23 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
               Cptr = &Ccol(ic+ir,jc+jr);
             else
               Cptr = &Crow(ic+ir,jc+jr);
-            /* if (nr == NR && mr == MR) {
-              BEGIN_TIMER
-              gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &betaI, Cptr, 1, ldC, NULL, cntx);
-              END_TIMER(t_kernel)
-            } else */ {
-              BEGIN_TIMER
-              gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &zero, Cc, 1, MR, NULL, cntx);
-              END_BEGIN_TIMER(t_kernel)
-              for (int j = 0; j < nr; j++)
-                  for (int i = 0; i < mr; i++)
-                      Cptr[j * ldC + i] = betaI * Cptr[j * ldC + i] + Cc[j * MR + i];
+            if (postprocess == NULL) {
+                BEGIN_TIMER
+                if (nr == NR && mr == MR) { // don't use buffer
+                    gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &betaI, Cptr, 1, ldC, NULL, cntx);
+                } else { // use buffer for border elements
+                    gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &zero, Cc, 1, mr, NULL, cntx);
+                    sxpbyM(mr, nr, Cc, mr, betaI, Cptr, ldC);
+                }
+                END_BEGIN_TIMER(t_kernel)
+            } else { // use buffer for postprocessing
+                BEGIN_TIMER
+                gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &zero, Cc, 1, mr, NULL, cntx);
+                END_BEGIN_TIMER(t_kernel)
+                postprocess(mr, nr, Cc, betaI, C, ldC, dim, bias_vector, ic + ir, jc + jr, pc == 0);
+                END_TIMER(t_generic)
               // gemm_base_Cresident( orderC, mr, nr, kc, alpha, &Ac[ir*kc], MR, &Bc[jr*kc], NR, betaI, Cptr, ldC );
 	    // gemm_microkernel_Cresident_neon_4x4_prefetch( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC );
-              END_TIMER(t_generic)
             }
           }
         }
@@ -347,5 +352,22 @@ void gemm_base_Cresident( char orderC, int m, int n, int k,
         else
           Crow(i,j) = alpha*tmp + beta*Crow(i,j);
       }
+    }
+}
+
+void sxpbyM(int m, int n, const float *X, int ldx, float beta, float *Y, int ldy)
+{
+    if (beta == 0.0) {
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i < m; i++)
+                Y[j * ldy + i] = X[j * ldx + i];
+    } else if (beta = 1.0) {
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i < m; i++)
+                Y[j * ldy + i] += X[j * ldx + i];
+    } else {
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i < m; i++)
+                Y[j * ldy + i] = beta * Y[j * ldy + i] + X[j * ldx + i];
     }
 }

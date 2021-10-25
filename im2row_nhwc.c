@@ -1,7 +1,11 @@
 #include <stdio.h>
 #include <assert.h>
+#include <stdbool.h>
+
+#include <blis.h>
 
 #include "convGemm.h"
+#include "gemm_blis.h"
 #include "im2row_nhwc.h"
 
 #define min(a,b) (((a)<(b))?(a):(b))
@@ -218,4 +222,14 @@ void row2im_nhwc(int m, int n, const float *rows, int ld, float *out, int batch,
         b++; } }
     }
 #endif
+}
+
+void add_bias_nhwc(int mr, int nr, float *Cc, float beta, float *C, int ldC, const convol_dim *dim, const float *bias_vector, int start_row, int start_col, bool last)
+{
+    if (last) {
+        for (int j = 0; j < nr; j++)
+            for (int i = 0; i < mr; i++)
+                Cc[j * mr + i] += bias_vector[start_row + i];
+    }
+    sxpbyM(mr, nr, Cc, mr, beta, C + start_row + start_col * ldC, ldC);
 }

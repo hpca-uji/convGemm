@@ -8,9 +8,7 @@
 #include "test.h"
 #include "convGemm.h"
 #include "gemm_blis.h"
-#include "gemm_nhwc.h"
 #include "im2row_nhwc.h"
-#include "gemm_nchw.h"
 #include "im2col_nchw.h"
 
 int main(int argc, char *argv[])
@@ -34,13 +32,12 @@ int main(int argc, char *argv[])
 
     t1 = get_time();
     sgemm('N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, aux, kh * kw * c, beta, out_gemm, kn);
-    // gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, aux, kh * kw * c, beta, out_blis, kn, ac_pack, bc_pack, cc_pack, cntx);
     t2 = get_time();
     for(int j = 0; j < ho * wo * b; j++) // add bias
         for(int i = 0; i < kn; i++)
             out_gemm[i + j * kn] += bias_vector[i];
     double t3 = get_time();
-    gemm_nhwc_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, image, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, cc_pack, cntx, &dim, bias_vector);
+    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, image, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, cc_pack, add_bias_nhwc, cntx, &dim, bias_vector);
     double t4 = get_time();
     double t_gemm = t2 - t1;
     double t_extra = t3 - t2;
@@ -71,7 +68,7 @@ int main(int argc, char *argv[])
                 for (int y = 0; y < wo; y++)
                     out_gemm[((i * kn + j) * ho + x) * wo + y] = aux_trans[((j * b + i) * ho + x) * wo + y];
     t3 = get_time();
-    gemm_nchw_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, image, ho * wo * b, kernel, kh * kw * c, beta, out, ho * wo * b, ac_pack, pack_RB_nchw, bc_pack, pack_CB, cc_pack, cntx, &dim, bias_vector);
+    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, image, ho * wo * b, kernel, kh * kw * c, beta, out, ho * wo * b, ac_pack, pack_RB_nchw, bc_pack, pack_CB, cc_pack, add_bias_nchw, cntx, &dim, bias_vector);
     t4 = get_time();
     t_gemm = t2 - t1;
     t_extra = t3 - t2;
