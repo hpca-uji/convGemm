@@ -8,7 +8,7 @@
 #define min(a,b) (((a)<(b))?(a):(b))
 #define Mcol(a1,a2)  M[ (a2)*(ldM)+(a1) ]
 
-void pack_RB_nchw(char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const convol_dim *d, int start_i, int start_j)
+void pack_RB_nchw(char orderM, char transM, int mc, int nc, const float *restrict M, int ldM, float *restrict Mc, int RR, const convol_dim *d, int start_i, int start_j)
 {
 /*
   BLIS pack for M-->Mc using implicit im2col
@@ -105,7 +105,7 @@ void pack_RB_nchw(char orderM, char transM, int mc, int nc, const float *M, int 
     }
 }
 
-void im2col_nchw(float *cols, int ld, const float *in, int batch, int channel, int height, int width, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
+void im2col_nchw(float *restrict cols, int ld, const float *restrict in, int batch, int channel, int height, int width, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
 {
 #if 1
     // #pragma omp parallel for
@@ -163,7 +163,7 @@ void im2col_nchw(float *cols, int ld, const float *in, int batch, int channel, i
 #endif
 }
 
-void transpose_nchw(int rows, int cols, const float *in, int ld, float beta, float *out, int kn, int ho, int wo, int start_row, int start_col)
+void transpose_nchw(int rows, int cols, const float *restrict in, int ld, float beta, float *restrict out, int kn, int ho, int wo, int start_row, int start_col)
 {
     // transpose first and second dimension
     int start_y =  start_row % wo;
@@ -185,7 +185,7 @@ void transpose_nchw(int rows, int cols, const float *in, int ld, float beta, flo
     }
 }
 
-void pack_CB_nchw_trans(char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const convol_dim *d, int start_row, int start_col)
+void pack_CB_nchw_trans(char orderM, char transM, int mc, int nc, const float *restrict M, int ldM, float *restrict Mc, int RR, const convol_dim *d, int start_row, int start_col)
 {
 /*
   BLIS pack for M-->Mc transposing first and second tensor dimensions
@@ -235,7 +235,7 @@ void pack_CB_nchw_trans(char orderM, char transM, int mc, int nc, const float *M
     }
 }
 
-void pack_RB_nchw_trans( char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const convol_dim *d, int start_row, int start_col)
+void pack_RB_nchw_trans(char orderM, char transM, int mc, int nc, const float *restrict M, int ldM, float *restrict Mc, int RR, const convol_dim *d, int start_row, int start_col)
 {
 /*
   BLIS pack for M-->Mc transposing first and second tensor dimensions
@@ -283,7 +283,7 @@ void pack_RB_nchw_trans( char orderM, char transM, int mc, int nc, const float *
     }
 }
 
-void pack_transpose_nchw(int rows, int cols, const float *in, int ld, float *out, int b, int ho, int wo, int start_row, int start_col)
+void pack_transpose_nchw(int rows, int cols, const float *restrict in, int ld, float *restrict out, int b, int ho, int wo, int start_row, int start_col)
 {
     // transpose first and second dimension
     int start_y =  start_row % wo;
@@ -304,7 +304,7 @@ void pack_transpose_nchw(int rows, int cols, const float *in, int ld, float *out
     }
 }
 
-void col2im_nchw(int m, int n, const float *cols, int ld, float *out, int batch, int channel, int height, int width, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
+void col2im_nchw(int m, int n, const float *restrict cols, int ld, float *restrict out, int batch, int channel, int height, int width, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
 {
     for (int c = 0; c < channel; c++)
         for (int kx = 0; kx < kheight; kx++)
@@ -325,7 +325,7 @@ void col2im_nchw(int m, int n, const float *cols, int ld, float *out, int batch,
             }
 }
 
-void post_col2im_nchw(int n, int m, float *cols, float beta, float *out, int ldout, const convol_dim *d, const float *bias_vector, int start_col, int start_row, bool last)
+void post_col2im_nchw(int n, int m, const float *restrict cols, float beta, float *restrict out, int ldout, const convol_dim *d, const float *restrict bias_vector, int start_col, int start_row, bool last)
 {
     /* int m = channel * kheight * kwidth;
     int n = oheight * owidth * batch; */
@@ -359,12 +359,25 @@ void post_col2im_nchw(int n, int m, float *cols, float beta, float *out, int ldo
     }
 }
 
-void add_bias_transpose_nchw(int mr, int nr, float *Cc, float beta, float *C, int ldC, const convol_dim *dim, const float *bias_vector, int start_row, int start_col, bool last)
+void add_bias_transpose_nchw(int mr, int nr, const float *restrict Cc, float beta, float *restrict C, int ldC, const convol_dim *dim, const float *restrict bias_vector, int start_row, int start_col, bool last)
 {
-    if (last && bias_vector) {
-        for (int j = 0; j < nr; j++)
-            for (int i = 0; i < mr; i++)
-                Cc[j * mr + i] += bias_vector[start_col + j];
+    // transpose first and second dimension
+    int start_y =  start_row % dim->owidth;
+    int start_x = (start_row / dim->owidth) % dim->oheight;
+    int start_b = (start_row / dim->owidth) / dim->oheight;
+    for (int j = 0; j < nr; j++) {
+        int y = start_y;
+        int x = start_x;
+        int b = start_b;
+        for (int i = 0; i < mr; i++) {
+            // out[((b * kn + k) * ho + x) * wo + y] = in[((j * batch + b) * ho + x) * wo + y];
+            int idx = ((b * dim->kn + start_col + j) * dim->oheight + x) * dim->owidth + y;
+            if (beta == 0.0) C[idx] = Cc[j * mr + i];
+            else C[idx] = beta * C[idx] + Cc[j * mr + i];
+            if (last && bias_vector) C[idx] += bias_vector[start_col + j];
+            y++; if (y >= dim->owidth) { y = 0;
+            x++; if (x >= dim->oheight) { x = 0;
+            b++; } }
+        }
     }
-    transpose_nchw(mr, nr, Cc, mr, beta, C, dim->kn, dim->oheight, dim->owidth, start_row, start_col);
 }

@@ -11,7 +11,7 @@
 #define min(a,b) (((a)<(b))?(a):(b))
 #define Mcol(a1,a2)  M[ (a2)*(ldM)+(a1) ]
 
-void pack_CB_nhwc(char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const convol_dim *d, int start_i, int start_j)
+void pack_CB_nhwc(char orderM, char transM, int mc, int nc, const float *restrict M, int ldM, float *restrict Mc, int RR, const convol_dim *d, int start_i, int start_j)
 {
 /*
   BLIS pack for M-->Mc using implicit im2row
@@ -108,7 +108,7 @@ void pack_CB_nhwc(char orderM, char transM, int mc, int nc, const float *M, int 
     }
 }
 
-void im2row_nhwc(float *rows, int ld, const float *in, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
+void im2row_nhwc(float *restrict rows, int ld, const float *restrict in, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
 {
 #if 1
     for (int b = 0; b < batch; b++)
@@ -164,7 +164,7 @@ void im2row_nhwc(float *rows, int ld, const float *in, int batch, int height, in
 #endif
 }
 
-void row2im_nhwc(int m, int n, const float *rows, int ld, float *out, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
+void row2im_nhwc(int m, int n, const float *restrict rows, int ld, float *restrict out, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
 {
     for (int b = 0; b < batch; b++)
         for (int x = 0; x < oheight; x++)
@@ -186,7 +186,7 @@ void row2im_nhwc(int m, int n, const float *rows, int ld, float *out, int batch,
             }
 }
 
-void post_row2im_nhwc(int n, int m, float *rows, float beta, float *out, int ldout, const convol_dim *d, const float *bias_vector, int start_col, int start_row, bool last)
+void post_row2im_nhwc(int n, int m, const float *restrict rows, float beta, float *restrict out, int ldout, const convol_dim *d, const float *restrict bias_vector, int start_col, int start_row, bool last)
 {
     /* int m = oheight * owidth * batch;
     int n = channel * kheight * kwidth; */
@@ -221,12 +221,24 @@ void post_row2im_nhwc(int n, int m, float *rows, float beta, float *out, int ldo
     }
 }
 
-void add_bias_nhwc(int mr, int nr, float *Cc, float beta, float *C, int ldC, const convol_dim *dim, const float *bias_vector, int start_row, int start_col, bool last)
+void add_bias_nhwc(int mr, int nr, const float *restrict Cc, float beta, float *restrict C, int ldC, const convol_dim *dim, const float *bias_vector, int start_row, int start_col, bool last)
 {
     if (last) {
-        for (int j = 0; j < nr; j++)
-            for (int i = 0; i < mr; i++)
-                Cc[j * mr + i] += bias_vector[start_row + i];
+        float *Cptr = C + start_row + start_col * ldC;
+        if (beta == 0.0) {
+            for (int j = 0; j < nr; j++)
+                for (int i = 0; i < mr; i++)
+                    Cptr[j * ldC + i] = Cc[j * mr + i] + bias_vector[start_row + i];
+        } else if (beta = 1.0) {
+            for (int j = 0; j < nr; j++)
+                for (int i = 0; i < mr; i++)
+                    Cptr[j * ldC + i] += Cc[j * mr + i] + bias_vector[start_row + i];
+        } else {
+            for (int j = 0; j < nr; j++)
+                for (int i = 0; i < mr; i++)
+                    Cptr[j * ldC + i] = beta * Cptr[j * ldC + i] + Cc[j * mr + i] + bias_vector[start_row + i];
+        }
+    } else {
+        sxpbyM(mr, nr, Cc, mr, beta, C + start_row + start_col * ldC, ldC);
     }
-    sxpbyM(mr, nr, Cc, mr, beta, C + start_row + start_col * ldC, ldC);
 }

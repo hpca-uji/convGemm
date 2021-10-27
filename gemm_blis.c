@@ -147,7 +147,7 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
   }
 }
 
-void pack_RB( char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const convol_dim *d, int start_row, int start_col ){
+void pack_RB( char orderM, char transM, int mc, int nc, const float *restrict M, int ldM, float *restrict Mc, int RR, const convol_dim *d, int start_row, int start_col ){
 /*
   BLIS pack for M-->Mc
 */
@@ -199,7 +199,7 @@ void pack_RB( char orderM, char transM, int mc, int nc, const float *M, int ldM,
     }
 }
 
-void pack_CB( char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const convol_dim *dim, int start_row, int start_col ){
+void pack_CB( char orderM, char transM, int mc, int nc, const float *restrict M, int ldM, float *restrict Mc, int RR, const convol_dim *dim, int start_row, int start_col ){
 /*
   BLIS pack for M-->Mc
 */
@@ -252,110 +252,7 @@ void pack_CB( char orderM, char transM, int mc, int nc, const float *M, int ldM,
     }
 }
 
-void unpack_RB( char orderM, char transM, int mc, int nc, float *M, int ldM, const float *Mc, int RR ){
-/*
-  BLIS unpack for M-->Mc
-*/
-  int    i, j, ii, k, rr;
-
-  if ( ((transM=='N')&&( orderM=='C'))||
-       ((transM=='T')&&( orderM=='R')) )
-    #pragma omp parallel for private(j, ii, rr, k)
-    for ( i=0; i<mc; i+=RR ) { 
-      k = i*nc;
-      rr = min( mc-i, RR );
-      for ( j=0; j<nc; j++ ) {
-        for ( ii=0; ii<rr; ii++ ) {
-          Mcol(i+ii,j) = Mc[k];
-          k++;
-        }
-        k += (RR-rr);
-      }
-    }
-  else
-    #pragma omp parallel for private(j, ii, rr, k)
-    for ( i=0; i<mc; i+=RR ) { 
-      k = i*nc;
-      rr = min( mc-i, RR );
-      for ( j=0; j<nc; j++ ) {
-        for ( ii=0; ii<rr; ii++ ) {
-          Mcol(j,i+ii) = Mc[k];
-          k++;
-        }
-        k += (RR-rr);
-      }
-    }
-}
-
-void unpack_CB( char orderM, char transM, int mc, int nc, float *M, int ldM, const float *Mc, int RR ){
-/*
-  BLIS unpack for M-->Mc
-*/
-  int    i, j, jj, k, nr;
-
-  k = 0;
-  if ( ((transM=='N')&&( orderM=='C'))||
-       ((transM=='T')&&( orderM=='R')) )
-    #pragma omp parallel for private(i, jj, nr, k)
-    for ( j=0; j<nc; j+=RR ) { 
-      k = j*mc;
-      nr = min( nc-j, RR );
-      for ( i=0; i<mc; i++ ) {
-        for ( jj=0; jj<nr; jj++ ) {
-          Mcol(i,j+jj) = Mc[k];
-          k++;
-        }
-        k += (RR-nr);
-      }
-    }
-  else
-    #pragma omp parallel for private(i, jj, nr, k)
-    for ( j=0; j<nc; j+=RR ) { 
-      k = j*mc;
-      nr = min( nc-j, RR );
-      for ( i=0; i<mc; i++ ) {
-        for ( jj=0; jj<nr; jj++ ) {
-          Mcol(j+jj,i) = Mc[k];
-          k++;
-        }
-        k += (RR-nr);
-      }
-    }
-}
-
-void gemm_base_Cresident( char orderC, int m, int n, int k, 
-                          float alpha, const float *A, int ldA, 
-                                       const float *B, int ldB, 
-                          float beta,  float *C, int ldC ){
-/*
-  Baseline micro-kernel 
-  Replace with specialized micro-kernel where C-->m x n is resident in registers
-*/
-  int    i, j, p;
-  float  zero = 0.0, one = 1.0, tmp;
-
-  for ( j=0; j<n; j++ )
-    for ( i=0; i<m; i++ ) {
-      tmp = 0.0; 
-      for ( p=0; p<k; p++ ) 
-        tmp += Acol(i,p) * Brow(p,j);
-
-      if ( beta==zero ) {
-        if ( orderC=='C' )
-          Ccol(i,j) = alpha*tmp;
-        else
-          Crow(i,j) = alpha*tmp;
-      }
-      else {
-        if ( orderC=='C' )
-          Ccol(i,j) = alpha*tmp + beta*Ccol(i,j);
-        else
-          Crow(i,j) = alpha*tmp + beta*Crow(i,j);
-      }
-    }
-}
-
-void sxpbyM(int m, int n, const float *X, int ldx, float beta, float *Y, int ldy)
+void sxpbyM(int m, int n, const float *restrict X, int ldx, float beta, float *restrict Y, int ldy)
 {
     if (beta == 0.0) {
         for (int j = 0; j < n; j++)
