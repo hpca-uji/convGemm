@@ -111,7 +111,6 @@ void pack_CB_nhwc(char orderM, char transM, int mc, int nc, const float *M, int 
 void im2row_nhwc(float *rows, int ld, const float *in, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
 {
 #if 1
-    // #pragma omp parallel for
     for (int b = 0; b < batch; b++)
         for (int x = 0; x < oheight; x++)
             for (int y = 0; y < owidth; y++) {
@@ -165,10 +164,8 @@ void im2row_nhwc(float *rows, int ld, const float *in, int batch, int height, in
 #endif
 }
 
-void row2im_nhwc(int m, int n, const float *rows, int ld, float *out, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation, int start_row, int start_col)
+void row2im_nhwc(int m, int n, const float *rows, int ld, float *out, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
 {
-#if 0
-    // #pragma omp parallel for
     for (int b = 0; b < batch; b++)
         for (int x = 0; x < oheight; x++)
             for (int y = 0; y < owidth; y++) {
@@ -187,41 +184,41 @@ void row2im_nhwc(int m, int n, const float *rows, int ld, float *out, int batch,
                             }
                     }
             }
-#else
+}
+
+void post_row2im_nhwc(int n, int m, float *rows, float beta, float *out, int ldout, const convol_dim *d, const float *bias_vector, int start_col, int start_row, bool last)
+{
     /* int m = oheight * owidth * batch;
-    int n = channel * kheight * kwidth;
-    int ld = channel * kheight * kwidth;
-    int start_row = 0;
-    int start_col = 0; */
+    int n = channel * kheight * kwidth; */
+
     // starting values for the first row
     // int row = (b * oheight + x) * owidth + y;
-    int y =  start_row % owidth;
-    int x = (start_row / owidth) % oheight;
-    int b = (start_row / owidth) / oheight;
+    int y =  start_row % d->owidth;
+    int x = (start_row / d->owidth) % d->oheight;
+    int b = (start_row / d->owidth) / d->oheight;
     // starting values for the first column
     // int col = (c * kheight + kx) * kwidth + ky;
-    int start_ky =  start_col % kwidth;
-    int start_kx = (start_col / kwidth) % kheight;
-    int start_c  = (start_col / kwidth) / kheight;
+    int start_ky =  start_col % d->kwidth;
+    int start_kx = (start_col / d->kwidth) % d->kheight;
+    int start_c  = (start_col / d->kwidth) / d->kheight;
 
     // #pragma omp parallel for
     for (int row = 0; row < m; row++) {
         for (int col = 0, c = start_c, kx = start_kx, ky = start_ky; col < n; col++) {
-            int ix = vstride * x + vdilation * kx - vpadding;
-            int iy = hstride * y + hdilation * ky - hpadding;
-            if (0 <= ix && ix < height && 0 <= iy && iy < width) {
+            int ix = d->vstride * x + d->vdilation * kx - d->vpadding;
+            int iy = d->hstride * y + d->hdilation * ky - d->hpadding;
+            if (0 <= ix && ix < d->height && 0 <= iy && iy < d->width) {
                 // in[b, ix, iy, c] += rows[row, col]
-                out[((b * height + ix) * width + iy) * channel + c] += rows[row * ld + col];
+                out[((b * d->height + ix) * d->width + iy) * d->channel + c] += rows[row * n + col];
             }
-            ky++; if (ky >= kwidth) { ky = 0;
-            kx++; if (kx >= kheight) { kx = 0;
+            ky++; if (ky >= d->kwidth) { ky = 0;
+            kx++; if (kx >= d->kheight) { kx = 0;
             c++; } }
         }
-        y++; if (y >= owidth) { y = 0;
-        x++; if (x >= oheight) { x = 0;
+        y++; if (y >= d->owidth) { y = 0;
+        x++; if (x >= d->oheight) { x = 0;
         b++; } }
     }
-#endif
 }
 
 void add_bias_nhwc(int mr, int nr, float *Cc, float beta, float *C, int ldC, const convol_dim *dim, const float *bias_vector, int start_row, int start_col, bool last)

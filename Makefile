@@ -10,20 +10,22 @@ LFLAGS = -fopenmp -lm -L$(BLIS_LIB) -Wl,-rpath=$(BLIS_LIB) -lblis
 
 default: libconvGemm.so test test_trans test_back test_gemm
 
-libconvGemm.so: convGemm.o gemm_blis.o gemm_back_nhwc.o im2row_nhwc.o gemm_back_nchw.o im2col_nchw.o
+libconvGemm.so: convGemm.o gemm_blis.o im2row_nhwc.o im2col_nchw.o
 	$(LINKER) -shared -o $@ $^ $(LFLAGS)
+
+alltest: runtest runtrans runback
 
 runtest: test test.dat
 	rm -f test.out
-	while read line; do echo $$line; ./test $$line > test.out || break; done < test.dat
+	while read line; do echo $$line; ./test $$line >> test.out || break; done < test.dat
 
 runtrans: test_trans test.dat
 	rm -f test_trans.out
-	while read line; do echo $$line; ./test_trans $$line > test_trans.out || break; done < test.dat
+	while read line; do echo $$line; ./test_trans $$line >> test_trans.out || break; done < test.dat
 
 runback: test_back test.dat
 	rm -f test_back.out
-	while read line; do echo $$line; ./test_back $$line > test_back.out || break; done < test.dat
+	while read line; do echo $$line; ./test_back $$line >> test_back.out || break; done < test.dat
 
 test.dat: test.pl test.txt
 	perl $^ > $@
@@ -34,7 +36,7 @@ test: test.o gemm_blis.o im2row_nhwc.o im2col_nchw.o
 test_trans: test_trans.o gemm_blis.o im2row_nhwc.o im2col_nchw.o
 	$(LINKER) -o $@ $^ $(LFLAGS)
 
-test_back: test_back.o gemm_blis.o gemm_back_nhwc.o im2row_nhwc.o gemm_back_nchw.o im2col_nchw.o
+test_back: test_back.o gemm_blis.o im2row_nhwc.o im2col_nchw.o
 	$(LINKER) -o $@ $^ $(LFLAGS)
 
 test_gemm: test_gemm.o gemm_blis.o

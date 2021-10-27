@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
                 for (int y = 0; y < wo; y++)
                     out_gemm[((i * kn + j) * ho + x) * wo + y] = aux_trans[((j * b + i) * ho + x) * wo + y];
     t3 = get_time();
-    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, image, ho * wo * b, kernel, kh * kw * c, beta, out, ho * wo * b, ac_pack, pack_RB_nchw, bc_pack, pack_CB, cc_pack, add_bias_nchw, cntx, &dim, bias_vector);
+    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, image, ho * wo * b, kernel, kh * kw * c, beta, out, ho * wo * b, ac_pack, pack_RB_nchw, bc_pack, pack_CB, cc_pack, add_bias_transpose_nchw, cntx, &dim, bias_vector);
     t4 = get_time();
     t_gemm = t2 - t1;
     t_extra = t3 - t2;

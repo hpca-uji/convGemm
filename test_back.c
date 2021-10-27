@@ -8,9 +8,7 @@
 #include "test.h"
 #include "convGemm.h"
 #include "gemm_blis.h"
-#include "gemm_back_nhwc.h"
 #include "im2row_nhwc.h"
-#include "gemm_back_nchw.h"
 #include "im2col_nchw.h"
 
 int main(int argc, char *argv[])
@@ -29,10 +27,10 @@ int main(int argc, char *argv[])
     sgemm('T', 'N', c * kh * kw, ho * wo * b, kn, alpha, kernel, kn, out, kn, 0.0, aux, c * kh * kw);
     double t2 = get_time();
     memset(image_gemm, 0, b * h * w * c * sizeof(float));
-    row2im_nhwc(ho * wo * b, c * kh * kw, aux, c * kh * kw, image_gemm, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, 0, 0);
+    row2im_nhwc(ho * wo * b, c * kh * kw, aux, c * kh * kw, image_gemm, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
     double t3 = get_time();
     memset(image, 0, b * h * w * c * sizeof(float));
-    gemm_back_nhwc_B3A2C0('C', 'C', 'C', 'T', 'N', c * kh * kw, ho * wo * b, kn, alpha, kernel, kn, out, kn, 1.0, NULL, c * kh * kw, ac_pack, bc_pack, cc_pack, cntx, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+    gemm_blis_B3A2C0('C', 'C', 'C', 'T', 'N', c * kh * kw, ho * wo * b, kn, alpha, kernel, kn, out, kn, 1.0, image, c * kh * kw, ac_pack, pack_RB, bc_pack, pack_CB, cc_pack, post_row2im_nhwc, cntx, &dim, NULL);
     double t4 = get_time();
     double t_gemm = t2 - t1;
     double t_row2im = t3 - t2;
@@ -51,10 +49,10 @@ int main(int argc, char *argv[])
     sgemm('N', 'T', b * ho * wo, c * kh * kw, kn, alpha, aux_trans, b * ho * wo, kernel, c * kh * kw, 0.0, aux, b * ho * wo);
     t3 = get_time();
     memset(image_gemm, 0, b * h * w * c * sizeof(float));
-    col2im_nchw(c * kh * kw, b * ho * wo, aux, b * ho * wo, image_gemm, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation, 0, 0);
+    col2im_nchw(c * kh * kw, b * ho * wo, aux, b * ho * wo, image_gemm, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
     t4 = get_time();
     memset(image, 0, b * h * w * c * sizeof(float));
-    gemm_back_nchw_B3A2C0('C', 'C', 'C', 'N', 'T', b * ho * wo, c * kh * kw, kn, alpha, out, b * ho * wo, kernel, c * kh * kw, 1.0, NULL, b * ho * wo, ac_pack, bc_pack, cc_pack, cntx, image, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', b * ho * wo, c * kh * kw, kn, alpha, out, b * ho * wo, kernel, c * kh * kw, 1.0, image, b * ho * wo, ac_pack, pack_RB_nchw_trans, bc_pack, pack_CB, cc_pack, post_col2im_nchw, cntx, &dim, NULL);
     double t5 = get_time();
     double t_trans = t2 - t1;
     t_gemm = t3 - t2;
