@@ -22,16 +22,17 @@ int main(int argc, char *argv[])
     float *out       = malloc(kn * ho * wo * b * sizeof(float));
     float *out_gemm  = malloc(kn * ho * wo * b * sizeof(float));
     float *aux_trans = malloc(kn * ho * wo * b * sizeof(float));
-    float *aux       = malloc(c * kh * kw * ho * wo * b * sizeof(float));
+    float *aux_nhwc  = malloc(c * kh * kw * ho * wo * b * sizeof(float));
+    float *aux_nchw  = malloc(c * kh * kw * ho * wo * b * sizeof(float));
 
     double t1 = get_time();
-    memset(aux, 0, c * kh * kw * ho * wo * b * sizeof(float));
-    im2row_nhwc(aux, c * kh * kw, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+    memset(aux_nhwc, 0, c * kh * kw * ho * wo * b * sizeof(float));
+    im2row_nhwc(aux_nhwc, c * kh * kw, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
     double t2 = get_time();
     double t_im2row = t2 - t1;
 
     t1 = get_time();
-    sgemm('N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, aux, kh * kw * c, beta, out_gemm, kn);
+    sgemm('N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, aux_nhwc, kh * kw * c, beta, out_gemm, kn);
     t2 = get_time();
     for(int j = 0; j < ho * wo * b; j++) // add bias
         for(int i = 0; i < kn; i++)
@@ -50,13 +51,13 @@ int main(int argc, char *argv[])
     }
 
     t1 = get_time();
-    memset(aux, 0, c * kh * kw * ho * wo * b * sizeof(float));
-    im2col_nchw(aux, b * ho * wo, image, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
+    memset(aux_nchw, 0, c * kh * kw * ho * wo * b * sizeof(float));
+    im2col_nchw(aux_nchw, b * ho * wo, image, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
     t2 = get_time();
     double t_im2col = t2 - t1;
 
     t1 = get_time();
-    sgemm('N', 'N', ho * wo * b, kn, kh * kw * c, alpha, aux, ho * wo * b, kernel, kh * kw * c, beta, aux_trans, ho * wo * b);
+    sgemm('N', 'N', ho * wo * b, kn, kh * kw * c, alpha, aux_nchw, ho * wo * b, kernel, kh * kw * c, beta, aux_trans, ho * wo * b);
     t2 = get_time();
     for(int i = 0; i < kn; i++) // add bias
         for(int j = 0; j < ho * wo * b; j++)

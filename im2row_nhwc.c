@@ -115,13 +115,12 @@ void im2row_nhwc(float *restrict rows, int ld, const float *restrict in, int bat
         for (int x = 0; x < oheight; x++)
             for (int y = 0; y < owidth; y++) {
                 int row = b * oheight * owidth + x * owidth + y;
-                for (int c = 0; c < channel; c++)
                     for (int kx = 0; kx < kheight; kx++) {
                         int ix = vstride * x + vdilation * kx - vpadding;
                         if (0 <= ix && ix < height)
                             for (int ky = 0; ky < kwidth; ky++) {
                                 int iy = hstride * y + hdilation * ky - hpadding;
-                                if (0 <= iy && iy < width) {
+                                if (0 <= iy && iy < width) for (int c = 0; c < channel; c++) {
                                     int col = c * kheight * kwidth + kx * kwidth + ky;
                                     rows[row * channel * kheight * kwidth + col] = in[((b * height + ix) * width + iy) * channel + c];
                                 }

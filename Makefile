@@ -15,19 +15,19 @@ libconvGemm.so: convGemm.o gemm_blis.o im2row_nhwc.o im2col_nchw.o
 
 alltest: runtest runtrans runback
 
-runtest: test test.dat
+runtest: test test.in
 	rm -f test.out
-	while read line; do echo $$line; ./test $$line >> test.out || break; done < test.dat
+	while read line; do echo $$line; ./test $$line >> test.out || break; done < test.in
 
-runtrans: test_trans test.dat
+runtrans: test_trans test.in
 	rm -f test_trans.out
-	while read line; do echo $$line; ./test_trans $$line >> test_trans.out || break; done < test.dat
+	while read line; do echo $$line; ./test_trans $$line >> test_trans.out || break; done < test.in
 
-runback: test_back test.dat
+runback: test_back test.in
 	rm -f test_back.out
-	while read line; do echo $$line; ./test_back $$line >> test_back.out || break; done < test.dat
+	while read line; do echo $$line; ./test_back $$line >> test_back.out || break; done < test.in
 
-test.dat: test.pl test.txt
+test.in: test.pl test.txt
 	perl $^ > $@
 
 test: test.o gemm_blis.o im2row_nhwc.o im2col_nchw.o
@@ -51,7 +51,7 @@ tags: *.c *.h
 #-----------------------------------
 
 clean:
-	rm *.o libconvGemm.so
+	rm *.o *.out *.in libconvGemm.so
 
 #-----------------------------------
 

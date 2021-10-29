@@ -109,11 +109,11 @@ void im2col_nchw(float *restrict cols, int ld, const float *restrict in, int bat
 {
 #if 1
     // #pragma omp parallel for
-    for (int c = 0; c < channel; c++)
-        for (int kx = 0; kx < kheight; kx++)
-            for (int ky = 0; ky < kwidth; ky++) {
-                int row = c * kheight * kwidth + kx * kwidth + ky;
-                for (int b = 0; b < batch; b++)
+    for (int b = 0; b < batch; b++)
+        for (int c = 0; c < channel; c++)
+            for (int kx = 0; kx < kheight; kx++)
+                for (int ky = 0; ky < kwidth; ky++) {
+                    int row = c * kheight * kwidth + kx * kwidth + ky;
                     for (int x = 0; x < oheight; x++) {
                         int ix = vstride * x + vdilation * kx - vpadding;
                         if (0 <= ix && ix < height)
@@ -126,7 +126,7 @@ void im2col_nchw(float *restrict cols, int ld, const float *restrict in, int bat
                                 }
                             }
                     }
-            }
+                }
 #else
     assert(start_row < channel * kheight * kwidth);
     assert(end_row <= channel * kheight * kwidth);
@@ -306,11 +306,11 @@ void pack_transpose_nchw(int rows, int cols, const float *restrict in, int ld, f
 
 void col2im_nchw(int m, int n, const float *restrict cols, int ld, float *restrict out, int batch, int channel, int height, int width, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
 {
-    for (int c = 0; c < channel; c++)
-        for (int kx = 0; kx < kheight; kx++)
-            for (int ky = 0; ky < kwidth; ky++) {
-                int row = c * kheight * kwidth + kx * kwidth + ky;
-                for (int b = 0; b < batch; b++)
+    for (int b = 0; b < batch; b++)
+        for (int c = 0; c < channel; c++)
+            for (int kx = 0; kx < kheight; kx++)
+                for (int ky = 0; ky < kwidth; ky++) {
+                    int row = c * kheight * kwidth + kx * kwidth + ky;
                     for (int x = 0; x < oheight; x++) {
                         int ix = vstride * x + vdilation * kx - vpadding;
                         if (0 <= ix && ix < height)
@@ -322,7 +322,7 @@ void col2im_nchw(int m, int n, const float *restrict cols, int ld, float *restri
                                 }
                             }
                     }
-            }
+                }
 }
 
 void post_col2im_nchw(int n, int m, const float *restrict cols, float beta, float *restrict out, int ldout, const convol_dim *d, const float *restrict bias_vector, int start_col, int start_row, bool last)
