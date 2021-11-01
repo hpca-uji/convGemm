@@ -1,9 +1,15 @@
-static inline double get_time()
-{
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-    return ts.tv_sec + ts.tv_nsec * 1e-9;
-}
+#define min(a,b) (((a)<(b))?(a):(b))
+#define max(a,b) (((a)>(b))?(a):(b))
+
+#define Acol(a1,a2)  A[ (a2)*(ldA)+(a1) ]
+#define Bcol(a1,a2)  B[ (a2)*(ldB)+(a1) ]
+#define Ccol(a1,a2)  C[ (a2)*(ldC)+(a1) ]
+#define Mcol(a1,a2)  M[ (a2)*(ldM)+(a1) ]
+
+#define Arow(a1,a2)  A[ (a1)*(ldA)+(a2) ]
+#define Brow(a1,a2)  B[ (a1)*(ldB)+(a2) ]
+#define Crow(a1,a2)  C[ (a1)*(ldC)+(a2) ]
+#define Mrow(a1,a2)  M[ (a1)*(ldM)+(a2) ]
 
 #ifdef BENCHMARK
 extern double t_pack, t_kernel, t_generic;
@@ -17,6 +23,8 @@ extern double t_pack, t_kernel, t_generic;
 #endif
 
 void gemm_blis_B3A2C0( char, char, char, char, char, int, int, int, float, const float *, int, const float *, int, float, float *, int,
+                       float *, pack_func, float *, pack_func, float *, post_func, cntx_t *, const convol_dim *, const float *);
+void gemm_blis_A3B2C0( char, char, char, char, char, int, int, int, float, const float *, int, const float *, int, float, float *, int,
                        float *, pack_func, float *, pack_func, float *, post_func, cntx_t *, const convol_dim *, const float *);
 void gemm_base_Cresident( char, int, int, int, float, const float *, int, const float *, int, float, float *, int );
 void pack_RB(char, char, int, int, const float *, int, float *, int, const convol_dim *, int, int);

@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
         t_pack = 0.0, t_kernel = 0.0, t_generic = 0.0;
 #endif
         double t2 = get_time();
-        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', m, n, k, 1.0, A, m, B, n, 0.0, C, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL, NULL);
+        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'T', m, n, k, 1.0, A, m, B, n, 0.0, C, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL, NULL);
         double t3 = get_time();
 
         float maxdiff = 0.0, cref_diff = 0.0, c_diff = 0.0;

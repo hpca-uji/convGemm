@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
     float *aux        = malloc(c * kh * kw * ho * wo * b * sizeof(float));
     float *aux_trans  = malloc(kn * ho * wo * b * sizeof(float));
     float *image      = malloc(b * h * w * c * sizeof(float));
+    float *image2     = malloc(b * h * w * c * sizeof(float));
     float *image_gemm = malloc(b * h * w * c * sizeof(float));
 
     double t1 = get_time();
@@ -38,7 +39,19 @@ int main(int argc, char *argv[])
     printf("\t%e %e %e", t_gemm, t_row2im, t_nhwc);
 
     if (!check(b * h * w * c, image_gemm, image)) {
-        printf(" error in gemm_back NHWC\n");
+        printf(" error in gemm_blis_B3A2C0 NHWC\n");
+        return 2;
+    }
+
+    t1 = get_time();
+    memset(image, 0, b * h * w * c * sizeof(float));
+    gemm_blis_A3B2C0('C', 'C', 'C', 'T', 'N', c * kh * kw, ho * wo * b, kn, alpha, kernel, kn, out, kn, 1.0, image2, c * kh * kw, ac_pack, pack_RB, bc_pack, pack_CB, cc_pack, post_row2im_nhwc, cntx, &dim, NULL);
+    t2 = get_time();
+    t_nhwc = t2 - t1;
+    printf(" %e", t_nhwc);
+
+    if (!check(b * h * w * c, image_gemm, image2)) {
+        printf(" error in gemm_blis_A3B2C0 NHWC\n");
         return 2;
     }
 
@@ -62,6 +75,18 @@ int main(int argc, char *argv[])
 
     if (!check(b * h * w * c, image_gemm, image)) {
         printf(" error in gemm_back NCHW\n");
+        return 2;
+    }
+
+    t1 = get_time();
+    memset(image, 0, b * h * w * c * sizeof(float));
+    gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'T', b * ho * wo, c * kh * kw, kn, alpha, out, b * ho * wo, kernel, c * kh * kw, 1.0, image2, b * ho * wo, ac_pack, pack_RB_nchw_trans, bc_pack, pack_CB, cc_pack, post_col2im_nchw, cntx, &dim, NULL);
+    t2 = get_time();
+    t_nchw = t2 - t1;
+    printf(" %e", t_trans, t_gemm, t_col2im, t_nchw);
+
+    if (!check(b * h * w * c, image_gemm, image2)) {
+        printf(" error in gemm_blis_A3B2C0 NCHW\n");
         return 2;
     }
 

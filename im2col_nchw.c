@@ -1,12 +1,12 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
-#include <assert.h>
+
+#include <blis.h>
 
 #include "convGemm.h"
+#include "gemm_blis.h"
 #include "im2col_nchw.h"
-
-#define min(a,b) (((a)<(b))?(a):(b))
-#define Mcol(a1,a2)  M[ (a2)*(ldM)+(a1) ]
 
 void pack_RB_nchw(char orderM, char transM, int mc, int nc, const float *restrict M, int ldM, float *restrict Mc, int RR, const convol_dim *d, int start_i, int start_j)
 {

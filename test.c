@@ -20,6 +20,7 @@ int main(int argc, char *argv[])
     float *bias_vector = random_alloc(kn);
 
     float *out       = malloc(kn * ho * wo * b * sizeof(float));
+    float *out2      = malloc(kn * ho * wo * b * sizeof(float));
     float *out_gemm  = malloc(kn * ho * wo * b * sizeof(float));
     float *aux_trans = malloc(kn * ho * wo * b * sizeof(float));
     float *aux_nhwc  = malloc(c * kh * kw * ho * wo * b * sizeof(float));
@@ -46,7 +47,18 @@ int main(int argc, char *argv[])
     printf("\t%e %e %e %e", t_im2row, t_gemm, t_extra, t_nhwc);
 
     if (!check(kn * ho * wo * b, out_gemm, out)) {
-        printf(" error in gemm_nhwc 'N' NHWC\n");
+        printf(" error in gemm_blis_B3A2C0 'N' NHWC\n");
+        return 2;
+    }
+
+    t1 = get_time();
+    gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, image, kh * kw * c, beta, out2, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, cc_pack, add_bias_nhwc, cntx, &dim, bias_vector);
+    t2 = get_time();
+    t_nhwc = t2 - t1;
+    printf(" %e", t_nhwc);
+
+    if (!check(kn * ho * wo * b, out_gemm, out2)) {
+        printf(" error in gemm_blis_A3B2C0 'N' NHWC\n");
         return 2;
     }
 
@@ -77,9 +89,21 @@ int main(int argc, char *argv[])
     printf("\t%e %e %e %e", t_im2col, t_gemm, t_extra, t_nchw);
 
     if (!check(kn * ho * wo * b, out_gemm, out)) {
-        printf(" error in gemm_nchw 'N' NCHW\n");
+        printf(" error in gemm_blis_B3A2C0 'N' NCHW\n");
         return 2;
     }
+
+    t1 = get_time();
+    gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, image, ho * wo * b, kernel, kh * kw * c, beta, out2, ho * wo * b, ac_pack, pack_RB_nchw, bc_pack, pack_CB, cc_pack, add_bias_transpose_nchw, cntx, &dim, bias_vector);
+    t2 = get_time();
+    t_nchw = t2 - t1;
+    printf(" %e", t_nchw);
+
+    if (!check(kn * ho * wo * b, out_gemm, out2)) {
+        printf(" error in gemm_blis_A3B2C0 'N' NCHW\n");
+        return 2;
+    }
+
     printf("\n");
 
     return 0;
