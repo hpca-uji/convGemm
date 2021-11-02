@@ -181,7 +181,7 @@ void row2im_nhwc(int m, int n, const float *restrict rows, int ld, float *restri
             }
 }
 
-void post_row2im_nhwc(int n, int m, const float *restrict rows, float beta, float *restrict out, int ldout, const convol_dim *d, const float *restrict bias_vector, int start_col, int start_row, bool last)
+void post_row2im_nhwc(int n, int m, const float *restrict rows, int ldr, float beta, float *restrict out, int ldout, const convol_dim *d, const float *restrict bias_vector, int start_col, int start_row, bool last)
 {
     /* int m = oheight * owidth * batch;
     int n = channel * kheight * kwidth; */
@@ -204,7 +204,7 @@ void post_row2im_nhwc(int n, int m, const float *restrict rows, float beta, floa
             int iy = d->hstride * y + d->hdilation * ky - d->hpadding;
             if (0 <= ix && ix < d->height && 0 <= iy && iy < d->width) {
                 // in[b, ix, iy, c] += rows[row, col]
-                out[((b * d->height + ix) * d->width + iy) * d->channel + c] += rows[row * n + col];
+                out[((b * d->height + ix) * d->width + iy) * d->channel + c] += rows[row * ldr + col];
             }
             ky++; if (ky >= d->kwidth) { ky = 0;
             kx++; if (kx >= d->kheight) { kx = 0;
@@ -216,24 +216,24 @@ void post_row2im_nhwc(int n, int m, const float *restrict rows, float beta, floa
     }
 }
 
-void add_bias_nhwc(int mr, int nr, const float *restrict Cc, float beta, float *restrict C, int ldC, const convol_dim *dim, const float *bias_vector, int start_row, int start_col, bool last)
+void add_bias_nhwc(int mr, int nr, const float *restrict Cc, int ldCc, float beta, float *restrict C, int ldC, const convol_dim *dim, const float *bias_vector, int start_row, int start_col, bool last)
 {
     if (last) {
         float *Cptr = C + start_row + start_col * ldC;
         if (beta == 0.0) {
             for (int j = 0; j < nr; j++)
                 for (int i = 0; i < mr; i++)
-                    Cptr[j * ldC + i] = Cc[j * mr + i] + bias_vector[start_row + i];
+                    Cptr[j * ldC + i] = Cc[j * ldCc + i] + bias_vector[start_row + i];
         } else if (beta = 1.0) {
             for (int j = 0; j < nr; j++)
                 for (int i = 0; i < mr; i++)
-                    Cptr[j * ldC + i] += Cc[j * mr + i] + bias_vector[start_row + i];
+                    Cptr[j * ldC + i] += Cc[j * ldCc + i] + bias_vector[start_row + i];
         } else {
             for (int j = 0; j < nr; j++)
                 for (int i = 0; i < mr; i++)
-                    Cptr[j * ldC + i] = beta * Cptr[j * ldC + i] + Cc[j * mr + i] + bias_vector[start_row + i];
+                    Cptr[j * ldC + i] = beta * Cptr[j * ldC + i] + Cc[j * ldCc + i] + bias_vector[start_row + i];
         }
     } else {
-        sxpbyM(mr, nr, Cc, mr, beta, C + start_row + start_col * ldC, ldC);
+        sxpbyM(mr, nr, Cc, ldCc, beta, C + start_row + start_col * ldC, ldC);
     }
 }

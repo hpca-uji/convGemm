@@ -99,36 +99,39 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
         pack_RB( orderA, transA, mc, kc, A, ldA, Ac, MR, dim, ic, pc);
         END_TIMER(t_pack)
 
+#pragma omp parallel for collapse(2) private(ir, jr, mr, nr, Cptr)
         for ( jr=0; jr<nc; jr+=NR ) {
-          nr = min(nc-jr, NR); 
-
           for ( ir=0; ir<mc; ir+=MR ) {
+
             mr = min(mc-ir, MR); 
+            nr = min(nc-jr, NR);
 
             if ( orderC=='C' )
               Cptr = &Ccol(ic+ir,jc+jr);
             else
               Cptr = &Crow(ic+ir,jc+jr);
+            float *Clocal = Cc + ir + jr * MC;
             if (postprocess == NULL) {
                 BEGIN_TIMER
                 if (nr == NR && mr == MR) { // don't use buffer
                     gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &betaI, Cptr, 1, ldC, NULL, cntx);
                 } else { // use buffer for border elements
-                    gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &zero, Cc, 1, mr, NULL, cntx);
-                    sxpbyM(mr, nr, Cc, mr, betaI, Cptr, ldC);
+                    gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &zero, Clocal, 1, MC, NULL, cntx);
+                    sxpbyM(mr, nr, Clocal, MC, betaI, Cptr, ldC);
                 }
                 END_BEGIN_TIMER(t_kernel)
             } else { // use buffer for postprocessing
                 BEGIN_TIMER
-                gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &zero, Cc, 1, mr, NULL, cntx);
+                gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &zero, Clocal, 1, MC, NULL, cntx);
                 END_BEGIN_TIMER(t_kernel)
-                postprocess(mr, nr, Cc, betaI, C, ldC, dim, bias_vector, ic + ir, jc + jr, pc == 0);
+                // postprocess(mr, nr, Clocal, MC, betaI, C, ldC, dim, bias_vector, ic + ir, jc + jr, pc == 0);
                 END_TIMER(t_generic)
               // gemm_base_Cresident( orderC, mr, nr, kc, alpha, &Ac[ir*kc], MR, &Bc[jr*kc], NR, betaI, Cptr, ldC );
 	    // gemm_microkernel_Cresident_neon_4x4_prefetch( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC );
             }
           }
         }
+        if (postprocess != NULL) postprocess(mc, nc, Cc, MC, betaI, C, ldC, dim, bias_vector, ic, jc, pc == 0);
       }
     }
   }

@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
     }
 
     t1 = get_time();
-    memset(image, 0, b * h * w * c * sizeof(float));
+    memset(image2, 0, b * h * w * c * sizeof(float));
     gemm_blis_A3B2C0('C', 'C', 'C', 'T', 'N', c * kh * kw, ho * wo * b, kn, alpha, kernel, kn, out, kn, 1.0, image2, c * kh * kw, ac_pack, pack_RB, bc_pack, pack_CB, cc_pack, post_row2im_nhwc, cntx, &dim, NULL);
     t2 = get_time();
     t_nhwc = t2 - t1;
@@ -79,11 +79,11 @@ int main(int argc, char *argv[])
     }
 
     t1 = get_time();
-    memset(image, 0, b * h * w * c * sizeof(float));
+    memset(image2, 0, b * h * w * c * sizeof(float));
     gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'T', b * ho * wo, c * kh * kw, kn, alpha, out, b * ho * wo, kernel, c * kh * kw, 1.0, image2, b * ho * wo, ac_pack, pack_RB_nchw_trans, bc_pack, pack_CB, cc_pack, post_col2im_nchw, cntx, &dim, NULL);
     t2 = get_time();
     t_nchw = t2 - t1;
-    printf(" %e", t_trans, t_gemm, t_col2im, t_nchw);
+    printf(" %e", t_nchw);
 
     if (!check(b * h * w * c, image_gemm, image2)) {
         printf(" error in gemm_blis_A3B2C0 NCHW\n");

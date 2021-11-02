@@ -325,7 +325,7 @@ void col2im_nchw(int m, int n, const float *restrict cols, int ld, float *restri
                 }
 }
 
-void post_col2im_nchw(int n, int m, const float *restrict cols, float beta, float *restrict out, int ldout, const convol_dim *d, const float *restrict bias_vector, int start_col, int start_row, bool last)
+void post_col2im_nchw(int n, int m, const float *restrict cols, int ldc, float beta, float *restrict out, int ldout, const convol_dim *d, const float *restrict bias_vector, int start_col, int start_row, bool last)
 {
     /* int m = channel * kheight * kwidth;
     int n = oheight * owidth * batch; */
@@ -347,7 +347,7 @@ void post_col2im_nchw(int n, int m, const float *restrict cols, float beta, floa
             int ix = d->vstride * x + d->vdilation * kx - d->vpadding;
             int iy = d->hstride * y + d->hdilation * ky - d->hpadding;
             if (0 <= ix && ix < d->height && 0 <= iy && iy < d->width) {
-                out[((b * d->channel + c) * d->height + ix) * d->width + iy] += cols[row * n + col];
+                out[((b * d->channel + c) * d->height + ix) * d->width + iy] += cols[row * ldc + col];
             }
             y++; if (y >= d->owidth) { y = 0;
             x++; if (x >= d->oheight) { x = 0;
@@ -359,7 +359,7 @@ void post_col2im_nchw(int n, int m, const float *restrict cols, float beta, floa
     }
 }
 
-void add_bias_transpose_nchw(int mr, int nr, const float *restrict Cc, float beta, float *restrict C, int ldC, const convol_dim *dim, const float *restrict bias_vector, int start_row, int start_col, bool last)
+void add_bias_transpose_nchw(int mr, int nr, const float *restrict Cc, int ldCc, float beta, float *restrict C, int ldC, const convol_dim *dim, const float *restrict bias_vector, int start_row, int start_col, bool last)
 {
     // transpose first and second dimension
     int start_y =  start_row % dim->owidth;
@@ -372,8 +372,8 @@ void add_bias_transpose_nchw(int mr, int nr, const float *restrict Cc, float bet
         for (int i = 0; i < mr; i++) {
             // out[((b * kn + k) * ho + x) * wo + y] = in[((j * batch + b) * ho + x) * wo + y];
             int idx = ((b * dim->kn + start_col + j) * dim->oheight + x) * dim->owidth + y;
-            if (beta == 0.0) C[idx] = Cc[j * mr + i];
-            else C[idx] = beta * C[idx] + Cc[j * mr + i];
+            if (beta == 0.0) C[idx] = Cc[j * ldCc + i];
+            else C[idx] = beta * C[idx] + Cc[j * ldCc + i];
             if (last && bias_vector) C[idx] += bias_vector[start_col + j];
             y++; if (y >= dim->owidth) { y = 0;
             x++; if (x >= dim->oheight) { x = 0;
