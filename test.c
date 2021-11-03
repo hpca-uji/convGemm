@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <math.h>
 
+#include <omp.h>
 #include <blis.h>
 
 #include "test.h"

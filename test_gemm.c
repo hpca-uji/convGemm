@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include <omp.h>
 #include <blis.h>
 
 #include "convGemm.h"
@@ -39,6 +40,8 @@ int main(int argc, char *argv[])
     int KC                   = bli_cntx_get_blksz_def_dt       (BLIS_FLOAT, BLIS_KC,   cntx);
     // BLIS_POOL_ADDR_ALIGN_SIZE, KR
     printf("kernel = %p MR = %d NR = %d packmr = %d packnr = %d row_pref = %d NC = %d MC = %d KC = %d\n", gemm_kernel, MR, NR, PACKMR, PACKNR, row_pref, NC, MC, KC);
+
+    bli_thread_set_num_threads(omp_get_max_threads());
 
     /* float *a1 = malloc(PACKMR * k * sizeof(float));
     float *b1 = malloc(k * PACKNR * sizeof(float));

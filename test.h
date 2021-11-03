@@ -45,6 +45,7 @@ static inline bool check(int n, float *a, float *b)
  \
     bli_init(); \
     cntx_t *cntx = bli_gks_query_cntx(); \
+    bli_thread_set_num_threads(omp_get_max_threads()); \
     int NC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NC, cntx); \
     int MC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MC, cntx); \
     int KC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_KC, cntx); \
