@@ -15,6 +15,10 @@ libconvGemm.so: convGemm.o gemm_blis.o gemm_blis_B3A2C0.o gemm_blis_A3B2C0.o im2
 
 alltest: runtest runtrans runback
 
+rungemm: test_gemm
+	rm -fr test_gemm.out
+	for i in `seq 1000 1000 10000`; do for j in 1 2 3 4 5; do ./test_gemm $$i $$i $$i 3 >> test_gemm.out; done; done
+
 runtest: test test.in
 	rm -f test.out
 	while read line; do echo $$line; ./test $$line >> test.out || break; done < test.in

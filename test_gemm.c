@@ -20,10 +20,26 @@ void fill_rand(float *a, int n)
         a[i] = rand() * 1.0 / RAND_MAX;
 }
 
+float diff(int n, const float *Cref, const float *C)
+{
+    float maxdiff = 0.0, cref_diff = 0.0, c_diff = 0.0;
+    for (int i = 0; i < n; i++) {
+        float d = fabs(Cref[i] - C[i]);
+        if (d > maxdiff) {
+            maxdiff = d;
+            cref_diff = Cref[i];
+            c_diff = C[i];
+        }
+    }
+    // printf("=== %e %e %e ===\n", cref_diff, c_diff, maxdiff);
+    if (cref_diff == 0.0) return maxdiff;
+    else return maxdiff / cref_diff;
+}
+
 int main(int argc, char *argv[])
 {
-    if (argc < 4) {
-        fprintf(stderr, "Missing arguments: M N K\n");
+    if (argc < 5) {
+        fprintf(stderr, "Missing arguments: M N K rep\n");
         return 1;
     }
 
@@ -39,7 +55,7 @@ int main(int argc, char *argv[])
     int MC                   = bli_cntx_get_blksz_def_dt       (BLIS_FLOAT, BLIS_MC,   cntx);
     int KC                   = bli_cntx_get_blksz_def_dt       (BLIS_FLOAT, BLIS_KC,   cntx);
     // BLIS_POOL_ADDR_ALIGN_SIZE, KR
-    printf("kernel = %p MR = %d NR = %d packmr = %d packnr = %d row_pref = %d NC = %d MC = %d KC = %d\n", gemm_kernel, MR, NR, PACKMR, PACKNR, row_pref, NC, MC, KC);
+    // printf("kernel = %p MR = %d NR = %d packmr = %d packnr = %d row_pref = %d NC = %d MC = %d KC = %d\n", gemm_kernel, MR, NR, PACKMR, PACKNR, row_pref, NC, MC, KC);
 
     bli_thread_set_num_threads(omp_get_max_threads());
 
@@ -63,16 +79,17 @@ int main(int argc, char *argv[])
         if (d > maxdiff) maxdiff = d;
     } */
 
-    int m = atoi(argv[1]), n = atoi(argv[2]), k = atoi(argv[3]);
+    int m = atoi(argv[1]), n = atoi(argv[2]), k = atoi(argv[3]), rep = atoi(argv[4]);
     float *A = malloc(m * k * sizeof(float));
     float *B = malloc(k * n * sizeof(float));
     float *C = malloc(m * n * sizeof(float));
+    float *C2 = malloc(m * n * sizeof(float));
     float *Cref = malloc(m * n * sizeof(float));
     float *Ac = aligned_alloc(4096, MC * KC * sizeof(float));
     float *Bc = aligned_alloc(4096, KC * NC * sizeof(float));
     float *Cc = aligned_alloc(4096, MC * NC * sizeof(float));
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < rep; i++) {
         fill_rand(A, m * k);
         fill_rand(B, k * n);
         double t1 = get_time();
@@ -84,46 +101,17 @@ int main(int argc, char *argv[])
         gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL, NULL);
         double t3 = get_time();
 
-        float maxdiff = 0.0, cref_diff = 0.0, c_diff = 0.0;
-        for (int i = 0; i < m * n; i++) {
-            float d = fabs(Cref[i] - C[i]);
-            if (d > maxdiff) {
-                maxdiff = d;
-                cref_diff = Cref[i];
-                c_diff = C[i];
-            }
-        }
-        printf("maxdiff = %e ref = %e res = %e\n", maxdiff, cref_diff, c_diff);
-        printf("t_blas = %e t_blis = %e ", t2 - t1, t3 - t2);
-#ifdef BENCHMARK
-        printf("t_pack = %e t_kernel = %e t_generic %e", t_pack, t_kernel, t_generic);
-#endif
-        printf("\n");
-    }
 
-    for (int i = 0; i < 3; i++) {
-        fill_rand(A, m * k);
-        fill_rand(B, k * n);
-        double t1 = get_time();
-        sgemm('N', 'T', m, n, k, 1.0, A, m, B, n, 0.0, Cref, m);
-#ifdef BENCHMARK
-        t_pack = 0.0, t_kernel = 0.0, t_generic = 0.0;
-#endif
-        double t2 = get_time();
-        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'T', m, n, k, 1.0, A, m, B, n, 0.0, C, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL, NULL);
-        double t3 = get_time();
+        double t4 = get_time();
+        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, n, 0.0, C2, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL, NULL);
+        double t5 = get_time();
 
-        float maxdiff = 0.0, cref_diff = 0.0, c_diff = 0.0;
-        for (int i = 0; i < m * n; i++) {
-            float d = fabs(Cref[i] - C[i]);
-            if (d > maxdiff) {
-                maxdiff = d;
-                cref_diff = Cref[i];
-                c_diff = C[i];
-            }
-        }
-        printf("maxdiff = %e ref = %e res = %e\n", maxdiff, cref_diff, c_diff);
-        printf("t_blas = %e t_blis = %e ", t2 - t1, t3 - t2);
+        printf("%d %d %d ", m, n, k);
+        printf("%e ",  diff(m * n, Cref, C));
+        printf("%e\t", diff(m * n, Cref, C2));
+        printf("%e %e %e\t", t2 - t1, t3 - t2, t5 - t4);
+        double gflop = 2.0 * m * n * k * 1e-9;
+        printf("%e %e %e", gflop / (t2 - t1), gflop / (t3 - t2), gflop / (t5 - t4));
 #ifdef BENCHMARK
         printf("t_pack = %e t_kernel = %e t_generic %e", t_pack, t_kernel, t_generic);
 #endif

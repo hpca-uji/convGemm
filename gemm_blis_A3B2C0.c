@@ -38,26 +38,26 @@
 #include "convGemm.h"
 #include "gemm_blis.h"
 
-void gemm_blis_A3B2C0( char orderA, char orderB, char orderC,
-                       char transA, char transB, 
-                       int m, int n, int k, 
-                       float alpha, const float *A, int ldA, 
-		                    const float *B, int ldB, 
-		       float beta, float *C, int ldC, 
-                       float *Ac, pack_func pack_RB,  float *Bc, pack_func pack_CB, float *Cc,
-                       post_func postprocess, cntx_t *cntx,
-                       const convol_dim *dim, const float *bias_vector)
+void gemm_blis_A3B2C0(char orderA, char orderB, char orderC,
+                      char transA, char transB,
+                      int m, int n, int k,
+                      float alpha, const float *A, int ldA,
+                      const float *B, int ldB,
+                      float beta, float *C, int ldC,
+                      float *Ac, pack_func pack_RB,
+                      float *Bc, pack_func pack_CB,
+                      float *Cc, post_func postprocess,
+                      cntx_t * cntx, const convol_dim * dim,
+                      const float *bias_vector)
 {
-  int    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr; 
-  float  zero = 0.0, one = 1.0, betaI; 
-  float *Cptr;
+    float zero = 0.0, one = 1.0;
 
-  sgemm_ukr_ft gemm_kernel = bli_cntx_get_l3_nat_ukr_dt(BLIS_FLOAT, BLIS_GEMM, cntx);
-  int MR = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MR, cntx);
-  int NR = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NR, cntx);
-  int NC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NC, cntx);
-  int MC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MC, cntx);
-  int KC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_KC, cntx);
+    sgemm_ukr_ft gemm_kernel = bli_cntx_get_l3_nat_ukr_dt(BLIS_FLOAT, BLIS_GEMM, cntx);
+    int MR = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MR, cntx);
+    int NR = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NR, cntx);
+    int NC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NC, cntx);
+    int MC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MC, cntx);
+    int KC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_KC, cntx);
 
 /* 
   Computes the GEMM C := beta * C + alpha * A * B
@@ -67,72 +67,71 @@ void gemm_blis_A3B2C0( char orderA, char orderB, char orderC,
 /*
 *     Test the input parameters.
 */
-  #if defined(CHECK)
-  #include "check_params.h"
-  #endif
+#if defined(CHECK)
+#include "check_params.h"
+#endif
 
-  // Quick return if possible
-  if ( (m==0)||(n==0)||(((alpha==zero)||(k==0))&&(beta==one)) )
-    return;
+    // Quick return if possible
+    if ((m == 0) || (n == 0) || (((alpha == zero) || (k == 0)) && (beta == one)))
+        return;
 
-  #include "quick_gemm.h"
+#include "quick_gemm.h"
 
-  for ( ic=0; ic<m; ic+=MC ) {
-    mc = min(m-ic, MC); 
+    for (int ic = 0; ic < m; ic += MC) {
+        int mc = min(m - ic, MC);
 
-    for ( pc=0; pc<k; pc+=KC ) {
-      kc = min(k-pc, KC); 
+        for (int pc = 0; pc < k; pc += KC) {
+            int kc = min(k - pc, KC);
 
-      BEGIN_TIMER
-      pack_RB( orderA, transA, mc, kc, A, ldA, Ac, MR, dim, ic, pc);
-      END_TIMER(t_pack)
+            pack_RB(orderA, transA, mc, kc, A, ldA, Ac, MR, dim, ic, pc);
 
-      if ( pc==0 )
-        betaI = beta;
-      else
-        betaI = one;
+            float betaI = (pc == 0) ? beta : 1.0;
 
-      for ( jc=0; jc<n; jc+=NC ) {
-        nc = min(n-jc, NC); 
+            for (int jc = 0; jc < n; jc += NC) {
+                int nc = min(n - jc, NC);
 
-        BEGIN_TIMER
-        pack_CB( orderB, transB, kc, nc, B, ldB, Bc, NR, dim, pc, jc);
-        END_TIMER(t_pack)
+                pack_CB(orderB, transB, kc, nc, B, ldB, Bc, NR, dim, pc, jc);
 
-#pragma omp parallel for collapse(2) private(ir, jr, mr, nr, Cptr)
-        for ( ir=0; ir<mc; ir+=MR ) {
-          for ( jr=0; jr<nc; jr+=NR ) {
+#if 0
+#pragma omp parallel for collapse(2)
+                for (int ir = 0; ir < mc; ir += MR) {
+                    for (int jr = 0; jr < nc; jr += NR) {
+#else
+                int iter_i = mc / MR; if (mc % MR != 0) iter_i++;
+                int iter_j = nc / NR; if (nc % NR != 0) iter_j++;
+                int iter = iter_i * iter_j;
+#pragma omp parallel for
+                for (int it = 0; it < iter; it++) {
+                    {
+                        int i = it / iter_j;
+                        int j = it % iter_j;
+                        int ir = i * MR;
+                        int jr = j * NR;
+#endif
 
-            mr = min(mc-ir, MR);
-            nr = min(nc-jr, NR); 
+                        int mr = min(mc - ir, MR);
+                        int nr = min(nc - jr, NR);
 
-            if ( orderC=='C' )
-              Cptr = &Ccol(ic+ir,jc+jr);
-            else
-              Cptr = &Crow(ic+ir,jc+jr);
-            float *Clocal = Cc + ir + jr * MC;
-            if (postprocess == NULL) {
-                BEGIN_TIMER
-                if (nr == NR && mr == MR) { // don't use buffer
-                    gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &betaI, Cptr, 1, ldC, NULL, cntx);
-                } else { // use buffer for border elements
-                    gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &zero, Clocal, 1, MC, NULL, cntx);
-                    sxpbyM(mr, nr, Clocal, MC, betaI, Cptr, ldC);
+                        float *Cptr = (orderC == 'C') ? &Ccol(ic + ir, jc + jr) : &Crow(ic + ir, jc + jr);
+                        float *Clocal = Cc + ir + jr * MC;
+
+                        if (postprocess == NULL) {
+                            if (nr == NR && mr == MR) { // don't use buffer
+                                gemm_kernel(kc, &alpha, &Ac[ir * kc], &Bc[jr * kc], &betaI, Cptr, 1, ldC, NULL, cntx);
+                            } else {    // use buffer for border elements
+                                gemm_kernel(kc, &alpha, &Ac[ir * kc], &Bc[jr * kc], &zero, Clocal, 1, MC, NULL, cntx);
+                                sxpbyM(mr, nr, Clocal, MC, betaI, Cptr, ldC);
+                            }
+                        } else {        // use buffer for postprocessing
+                            gemm_kernel(kc, &alpha, &Ac[ir * kc], &Bc[jr * kc], &zero, Clocal, 1, MC, NULL, cntx);
+                            // postprocess(mr, nr, Clocal, MC, betaI, C, ldC, dim, bias_vector, ic + ir, jc + jr, pc == 0);
+                        }
+                    }
                 }
-                END_BEGIN_TIMER(t_kernel)
-            } else { // use buffer for postprocessing
-                BEGIN_TIMER
-                gemm_kernel(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &zero, Clocal, 1, MC, NULL, cntx);
-                END_BEGIN_TIMER(t_kernel)
-                // postprocess(mr, nr, Clocal, MC, betaI, C, ldC, dim, bias_vector, ic + ir, jc + jr, pc == 0);
-                END_TIMER(t_generic)
-              // gemm_base_Cresident( orderC, mr, nr, kc, alpha, &Ac[ir*kc], MR, &Bc[jr*kc], NR, betaI, Cptr, ldC );
-	    // gemm_microkernel_Cresident_neon_4x4_prefetch( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC );
+                if (postprocess != NULL) {
+                    postprocess(mc, nc, Cc, MC, betaI, C, ldC, dim, bias_vector, ic, jc, pc == 0);
+                }
             }
-          }
         }
-        if (postprocess != NULL) postprocess(mc, nc, Cc, MC, betaI, C, ldC, dim, bias_vector, ic, jc, pc == 0);
-      }
     }
-  }
 }
