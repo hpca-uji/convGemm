@@ -3,12 +3,13 @@
 #include <stdlib.h>
 
 #include <omp.h>
+#define BLIS_DISABLE_BLAS_DEFS
 #include <blis.h>
 
 #include "convGemm.h"
 #include "gemm_blis.h"
 
-// void sgemm_(char *transa, char *transb, int *m, int *n, int *k, float *alpha, const float *a, int *lda, const float *b, int *ldb, float *beta, float *c, int *ldc);
+void sgemm_(char *transa, char *transb, int *m, int *n, int *k, float *alpha, const float *a, int *lda, const float *b, int *ldb, float *beta, float *c, int *ldc);
 
 static inline void sgemm(char transa, char transb, int m, int n, int k, float alpha, const float *a, int lda, const float *b, int ldb, float beta, float *c, int ldc) {
     sgemm_(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
@@ -64,8 +65,6 @@ int main(int argc, char *argv[])
     fill_rand(a1, PACKMR * k);
     fill_rand(b1, k * PACKNR);
     float *c11 = malloc(MR * NR * sizeof(float));
-    float alpha = 1.0;
-    float beta = 0.0;
     int rsc = 1; // colunm major
     int csc = MR;
     kernel(k, &alpha, a1, b1, &beta, c11, rsc, csc, NULL, cntx);
@@ -82,36 +81,39 @@ int main(int argc, char *argv[])
     int m = atoi(argv[1]), n = atoi(argv[2]), k = atoi(argv[3]), rep = atoi(argv[4]);
     float *A = malloc(m * k * sizeof(float));
     float *B = malloc(k * n * sizeof(float));
-    float *C = malloc(m * n * sizeof(float));
+    float *C1 = malloc(m * n * sizeof(float));
     float *C2 = malloc(m * n * sizeof(float));
+    float *C3 = malloc(m * n * sizeof(float));
     float *Cref = malloc(m * n * sizeof(float));
     float *Ac = aligned_alloc(4096, MC * KC * sizeof(float));
     float *Bc = aligned_alloc(4096, KC * NC * sizeof(float));
     float *Cc = aligned_alloc(4096, MC * NC * sizeof(float));
 
+    float alpha = 1.0;
+    float beta = 0.0;
+
     for (int i = 0; i < rep; i++) {
+#ifdef BENCHMARK
+        t_pack = 0.0, t_kernel = 0.0, t_generic = 0.0;
+#endif
         fill_rand(A, m * k);
         fill_rand(B, k * n);
         double t1 = get_time();
         sgemm('N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, Cref, m);
-#ifdef BENCHMARK
-        t_pack = 0.0, t_kernel = 0.0, t_generic = 0.0;
-#endif
         double t2 = get_time();
-        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL, NULL);
+        bli_sgemm(BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, m, n, k, &alpha, A, 1, m, B, 1, k, &beta, C1, 1, m);
         double t3 = get_time();
-
-
+        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C2, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL, NULL);
         double t4 = get_time();
-        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, n, 0.0, C2, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL, NULL);
+        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, n, 0.0, C3, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL, NULL);
         double t5 = get_time();
 
         printf("%d %d %d ", m, n, k);
-        printf("%e ",  diff(m * n, Cref, C));
-        printf("%e\t", diff(m * n, Cref, C2));
-        printf("%e %e %e\t", t2 - t1, t3 - t2, t5 - t4);
+        printf("%e ",  diff(m * n, Cref, C2));
+        printf("%e\t", diff(m * n, Cref, C3));
+        printf("%e %e %e %e\t", t2 - t1, t3 - t2, t4 - t3, t5 - t4);
         double gflop = 2.0 * m * n * k * 1e-9;
-        printf("%e %e %e", gflop / (t2 - t1), gflop / (t3 - t2), gflop / (t5 - t4));
+        printf("%e %e %e %e", gflop / (t2 - t1), gflop / (t3 - t2), gflop / (t4 - t3), gflop / (t5 - t4));
 #ifdef BENCHMARK
         printf("t_pack = %e t_kernel = %e t_generic %e", t_pack, t_kernel, t_generic);
 #endif
