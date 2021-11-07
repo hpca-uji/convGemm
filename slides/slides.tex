@@ -103,6 +103,54 @@
     \end{tikzpicture}
 \end{frame}
 
+\begin{frame}%[plain]
+    \begin{tikzpicture}[remember picture,overlay]
+        \node[at=(current page.center)] {
+            \includegraphics[width=\paperwidth]{../plots/convgemm_nchw-volta.pdf}
+        };
+    \end{tikzpicture}
+\end{frame}
+
+\begin{frame}%[plain]
+    \begin{tikzpicture}[remember picture,overlay]
+        \node[at=(current page.center)] {
+            \includegraphics[width=\paperwidth]{../plots/trans_nchw-volta.pdf}
+        };
+    \end{tikzpicture}
+\end{frame}
+
+\begin{frame}%[plain]
+    \begin{tikzpicture}[remember picture,overlay]
+        \node[at=(current page.center)] {
+            \includegraphics[width=\paperwidth]{../plots/back_nchw-volta.pdf}
+        };
+    \end{tikzpicture}
+\end{frame}
+
+\begin{frame}%[plain]
+    \begin{tikzpicture}[remember picture,overlay]
+        \node[at=(current page.center)] {
+            \includegraphics[width=\paperwidth]{../plots/convgemm-volta.pdf}
+        };
+    \end{tikzpicture}
+\end{frame}
+
+\begin{frame}%[plain]
+    \begin{tikzpicture}[remember picture,overlay]
+        \node[at=(current page.center)] {
+            \includegraphics[width=\paperwidth]{../plots/trans-volta.pdf}
+        };
+    \end{tikzpicture}
+\end{frame}
+
+\begin{frame}%[plain]
+    \begin{tikzpicture}[remember picture,overlay]
+        \node[at=(current page.center)] {
+            \includegraphics[width=\paperwidth]{../plots/back-volta.pdf}
+        };
+    \end{tikzpicture}
+\end{frame}
+
 \begin{frame}
     \begin{block}{Trabajo hecho}
     \begin{itemize}
@@ -117,8 +165,9 @@
 
     \begin{block}{Por hacer}
     \begin{itemize}
-        \item Activaciones
-        \item Quitar condiciones de carrera
+        \item Usar buffer pequeño para biases y trans. NCHW
+        \item Añadir activaciones al postproceso
+        \item Quitar condiciones de carrera en la deconvoloción
     \end{itemize}
     \end{block}
 \end{frame}

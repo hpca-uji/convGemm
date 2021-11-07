@@ -53,6 +53,6 @@ set label  '960' at 37.25,0 offset 0,-1 rotate center font ",10"
 set label  '992' at 38.25,0 offset 0,-1 rotate center font ",10"
 set label '1024' at 39.25,0 offset 0,-1 rotate center font ",10"
 
-plot ARG1 using (1):(2*$1*$2*$3*1e-9/($4+$5)):(0.25):(sprintf("%6d", $1)) title 'im2row+BLIS', \
-     ARG1 using (1.5):(2*$1*$2*$3*1e-9/$6):(0.25):(sprintf("%6d", $1)) title 'convGEMM NHWC trans'
+plot ARG1 using (1):(2*$1*$2*$3*1e-9/($8+$9+$10)):(0.25):(sprintf("%6d", $1)) title 'im2col+trans+BLIS', \
+     ARG1 using (1.5):(2*$1*$2*$3*1e-9/$11):(0.25):(sprintf("%6d", $1)) title 'convGEMM NCHW trans'
 

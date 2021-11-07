@@ -1,6 +1,5 @@
 set term postscript color eps size 4,3
 set encoding utf8
-
 set object rectangle from graph 0,0 to graph 1,1 behind fillcolor rgb 'white' fillstyle solid noborder
 
 set style data boxplot
