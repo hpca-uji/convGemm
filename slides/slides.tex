@@ -1,0 +1,126 @@
+\documentclass[aspectratio=43]{beamer}
+% vim: nospell
+\usepackage{bibentry}
+\usepackage{booktabs}
+\usepackage{xspace}
+\usepackage{listings}
+\hypersetup{draft}
+\usepackage{tikz}
+
+\usepackage{GoSans}
+\usepackage{GoMono}
+\usepackage{fourier}
+%\usepackage{arev}
+\usepackage[T1]{fontenc}
+%\usefonttheme{serif}
+\usefonttheme[onlymath]{serif}
+
+\usecolortheme{beetle}
+\setbeamercolor{structure}{bg=beetle@other}
+\setbeamercolor{block body}{bg=black!20}
+
+%\usecolortheme{orchid}
+%\usecolortheme{whale}
+
+%\useoutertheme{infolines}
+%\setbeamertemplate{headline}{}
+\setbeamertemplate{navigation symbols}{}
+\addtobeamertemplate{navigation symbols}{}{%
+    \usebeamerfont{footline}%
+    \usebeamercolor[black]{}%
+    \insertframenumber/\inserttotalframenumber
+}
+\useinnertheme[shadow]{rounded}
+\setbeamertemplate{items}[triangle]
+%\useinnertheme{circles}
+%\useinnertheme{rectangles}
+
+\setbeamercovered{transparent}
+
+\newcommand{\sectiontoc}[1]{
+    \section{#1}
+    \begin{frame}{Outline}
+    \tableofcontents[currentsection]
+    \end{frame}
+}
+
+\newcommand{\R}{\mathbb{R}}
+
+\begin{document}
+
+\title{convGEMM}
+
+% \author{%
+% Jos\'e~I.~Aliaga\inst{1}
+% \and
+% Hartwig~Anzt\inst{2,3}
+% \and
+% Enrique~S.~Quintana-Ort\'{\i}\inst{4}
+% \and
+% \textbf{Andr\'es~E.~Tom\'as}\inst{1,5}
+% \and
+% Yuhsiang M. Tsai\inst{2}
+% }
+% %\authorrunning{J. I. Aliaga et al.}
+% 
+% \institute{%
+% Dpto. d'Enginyeria i Ci\`encia dels Computadors, Universitat Jaume I, Spain
+% \and
+% Steinbuch Centre for Computing, Karlsruhe Institute of Technology, Germany
+% \and
+% Innovative Computing Lab, University of Tennessee, USA
+% \and
+% DISCA, Universitat Polit\`ecnica de Val\`encia, Spain
+% \and
+% Dpto. de Inform\'atica, Universitat de Val\`encia, Spain
+% }
+
+\date{8 septiembre 2021}
+
+\begin{frame}%[plain]
+\titlepage
+\end{frame}
+
+% \begin{frame}{Outline}
+% \tableofcontents
+% \end{frame}
+
+% \section{Background}
+
+\begin{frame}%[plain]
+    \begin{tikzpicture}[remember picture,overlay]
+        \node[at=(current page.center)] {
+            \includegraphics[width=\paperwidth]{../plots/blas-volta.pdf}
+        };
+    \end{tikzpicture}
+\end{frame}
+
+\begin{frame}%[plain]
+    \begin{tikzpicture}[remember picture,overlay]
+        \node[at=(current page.center)] {
+            \includegraphics[width=\paperwidth]{../plots/blis-volta.pdf}
+        };
+    \end{tikzpicture}
+\end{frame}
+
+\begin{frame}
+    \begin{block}{Trabajo hecho}
+    \begin{itemize}
+        \item Padding implícito
+        \item Cualquier combinación de \emph{stride}, \emph{padding} y \emph{dilation}
+        \item Formatos NCHW y NHWC
+        \item Independiente de la arquitectura
+        \item B3A2A0 y A3B2C0
+        \item Bias y transposición dentro de GEMM
+    \end{itemize}
+    \end{block}
+
+    \begin{block}{Por hacer}
+    \begin{itemize}
+        \item Activaciones
+        \item Quitar condiciones de carrera
+    \end{itemize}
+    \end{block}
+\end{frame}
+
+\end{document}
