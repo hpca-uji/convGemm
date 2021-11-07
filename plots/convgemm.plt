@@ -1,7 +1,7 @@
 set term postscript color eps
 
 set style data boxplot
-set style boxplot nooutliers
+set style boxplot # nooutliers
 
 set title 'convGEMM ' . ARG2
 set ylabel 'Acceleration'
@@ -11,7 +11,7 @@ set key off
 set bmargin 3
 
 plot 1.0 with line ls 0, \
-     ARG1 using (1):(($14+$15+$16)/$17), \
-     ARG1 using (2):(($14+$15+$16)/$18), \
-     ARG1 using (3):(($19+$20+$21)/$22), \
-     ARG1 using (4):(($19+$20+$21)/$23)
+     ARG1 using (1):(($4+$5+$6)/$7), \
+     ARG1 using (2):(($4+$5+$6)/$8), \
+     ARG1 using (3):(($9+$10+$11)/$12), \
+     ARG1 using (4):(($9+$10+$11)/$13)
