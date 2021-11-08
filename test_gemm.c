@@ -37,6 +37,27 @@ float diff(int n, const float *Cref, const float *C)
     else return maxdiff / cref_diff;
 }
 
+void post_sxpbyM(int m, int n, const float *restrict X, int ldx, float beta, float *restrict Y, int ldy, const convol_dim *dim, const float *bias_vector, int start_row, int start_col, bool last)
+{
+    Y = Y + start_col * ldy + start_row;
+    if (beta == 0.0) {
+        // #pragma omp parallel for
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i < m; i++)
+                Y[j * ldy + i] = X[j * ldx + i];
+    } else if (beta = 1.0) {
+        // #pragma omp parallel for
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i < m; i++)
+                Y[j * ldy + i] += X[j * ldx + i];
+    } else {
+        // #pragma omp parallel for
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i < m; i++)
+                Y[j * ldy + i] = beta * Y[j * ldy + i] + X[j * ldx + i];
+    }
+}
+
 int main(int argc, char *argv[])
 {
     if (argc < 5) {
@@ -103,9 +124,9 @@ int main(int argc, char *argv[])
         double t2 = get_time();
         bli_sgemm(BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, m, n, k, &alpha, A, 1, m, B, 1, k, &beta, C1, 1, m);
         double t3 = get_time();
-        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C2, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL, NULL);
+        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C2, m, Ac, pack_RB, Bc, pack_CB, Cc, post_sxpbyM /*NULL*/, cntx, NULL, NULL);
         double t4 = get_time();
-        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, n, 0.0, C3, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL, NULL);
+        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, n, 0.0, C3, m, Ac, pack_RB, Bc, pack_CB, Cc, post_sxpbyM /*NULL*/, cntx, NULL, NULL);
         double t5 = get_time();
 
         printf("%d %d %d ", m, n, k);

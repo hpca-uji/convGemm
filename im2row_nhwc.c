@@ -19,7 +19,7 @@ void pack_CB_nhwc(char orderM, char transM, int mc, int nc, const float *restric
         int start_ky =  start_i % d->kwidth;
         int start_kx = (start_i / d->kwidth) % d->kheight;
         int start_c  = (start_i / d->kwidth) / d->kheight;
-        // #pragma omp parallel for
+        #pragma omp parallel for
         for (int j = 0; j < nc; j += RR) {
             int k = j * mc;
             int nr = min(nc - j, RR);
@@ -108,6 +108,7 @@ void pack_CB_nhwc(char orderM, char transM, int mc, int nc, const float *restric
 void im2row_nhwc(float *restrict rows, int ld, const float *restrict in, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
 {
 #if 1
+    #pragma omp parallel for
     for (int b = 0; b < batch; b++)
         for (int x = 0; x < oheight; x++)
             for (int y = 0; y < owidth; y++) {
@@ -162,6 +163,7 @@ void im2row_nhwc(float *restrict rows, int ld, const float *restrict in, int bat
 
 void row2im_nhwc(int m, int n, const float *restrict rows, int ld, float *restrict out, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
 {
+    #pragma omp parallel for
     for (int b = 0; b < batch; b++)
         for (int x = 0; x < oheight; x++)
             for (int y = 0; y < owidth; y++) {
@@ -218,22 +220,41 @@ void post_row2im_nhwc(int n, int m, const float *restrict rows, int ldr, float b
 
 void add_bias_nhwc(int mr, int nr, const float *restrict Cc, int ldCc, float beta, float *restrict C, int ldC, const convol_dim *dim, const float *bias_vector, int start_row, int start_col, bool last)
 {
+    float *Cptr = C + start_row + start_col * ldC;
     if (last) {
-        float *Cptr = C + start_row + start_col * ldC;
         if (beta == 0.0) {
+            #pragma omp parallel for
             for (int j = 0; j < nr; j++)
                 for (int i = 0; i < mr; i++)
                     Cptr[j * ldC + i] = Cc[j * ldCc + i] + bias_vector[start_row + i];
         } else if (beta = 1.0) {
+            #pragma omp parallel for
             for (int j = 0; j < nr; j++)
                 for (int i = 0; i < mr; i++)
                     Cptr[j * ldC + i] += Cc[j * ldCc + i] + bias_vector[start_row + i];
         } else {
+            #pragma omp parallel for
             for (int j = 0; j < nr; j++)
                 for (int i = 0; i < mr; i++)
                     Cptr[j * ldC + i] = beta * Cptr[j * ldC + i] + Cc[j * ldCc + i] + bias_vector[start_row + i];
         }
     } else {
-        sxpbyM(mr, nr, Cc, ldCc, beta, C + start_row + start_col * ldC, ldC);
+        // sxpbyM(mr, nr, Cc, ldCc, beta, C + start_row + start_col * ldC, ldC);
+        if (beta == 0.0) {
+            #pragma omp parallel for
+            for (int j = 0; j < nr; j++)
+                for (int i = 0; i < mr; i++)
+                    Cptr[j * ldC + i] = Cc[j * ldCc + i];
+        } else if (beta = 1.0) {
+            #pragma omp parallel for
+            for (int j = 0; j < nr; j++)
+                for (int i = 0; i < mr; i++)
+                    Cptr[j * ldC + i] += Cc[j * ldCc + i];
+        } else {
+            #pragma omp parallel for
+            for (int j = 0; j < nr; j++)
+                for (int i = 0; i < mr; i++)
+                    Cptr[j * ldC + i] = beta * Cptr[j * ldC + i] + Cc[j * ldCc + i];
+        }
     }
 }

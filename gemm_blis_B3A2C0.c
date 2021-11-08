@@ -92,7 +92,7 @@ void gemm_blis_B3A2C0(char orderA, char orderB, char orderC,
 
                 pack_RB(orderA, transA, mc, kc, A, ldA, Ac, MR, dim, ic, pc);
 
-#if 0
+#if 1
 #pragma omp parallel for collapse(2)
                 for (int jr = 0; jr < nc; jr += NR) {
                     for (int ir = 0; ir < mc; ir += MR) {

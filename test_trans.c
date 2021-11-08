@@ -25,6 +25,9 @@ int main(int argc, char *argv[])
     float *kernel2     = malloc(c * kh * kw * kn * sizeof(float));
     float *kernel_gemm = malloc(c * kh * kw * kn * sizeof(float));
 
+    for (int r = 0; r < rep; r++) {
+    if (r > 0) printf("%d %d %d", kn, kh * kw * c, ho * wo * b);
+
     double t1 = get_time();
     memset(aux, 0, c * kh * kw * ho * wo * b * sizeof(float));
     im2row_nhwc(aux, c * kh * kw, image, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
@@ -38,7 +41,7 @@ int main(int argc, char *argv[])
     double t3 = get_time();
     double t_gemm = t2 - t1;
     double t_nhwc = t3 - t2;
-    printf("\t%e %e %e", t_im2row, t_gemm, t_nhwc);
+    if (r > 0) printf("\t%e %e %e", t_im2row, t_gemm, t_nhwc);
 
     if (!check(c * kh * kw * kn, kernel_gemm, kernel)) {
         printf(" error in gemm_blis_B3A2C0 'T' NHWC\n");
@@ -49,7 +52,7 @@ int main(int argc, char *argv[])
     gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, out, kn, image, kh * kw * c, beta, kernel2, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, cc_pack, NULL, cntx, &dim, NULL);
     t2 = get_time();
     t_nhwc = t2 - t1;
-    printf(" %e", t_nhwc);
+    if (r > 0) printf(" %e", t_nhwc);
 
     if (!check(c * kh * kw * kn, kernel_gemm, kernel2)) {
         printf(" error in gemm_blis_A3B2C0 'T' NHWC\n");
@@ -64,6 +67,7 @@ int main(int argc, char *argv[])
 
     t1 = get_time();
     // transpose first and second dimension
+    #pragma omp parallel for
     for (int i = 0; i < kn; i++)
         for (int j = 0; j < b; j++)
             for (int x = 0; x < ho; x++)
@@ -77,7 +81,7 @@ int main(int argc, char *argv[])
     double t_extra = t2 - t1;
     t_gemm = t3 - t2;
     double t_nchw = t4 - t3;
-    printf("\t%e %e %e %e", t_im2col, t_gemm, t_extra, t_nchw);
+    if (r > 0) printf("\t%e %e %e %e", t_im2col, t_gemm, t_extra, t_nchw);
 
     if (!check(c * kh * kw * kn, kernel_gemm, kernel)) {
         printf(" error in gemm_nchw 'T' NCHW\n");
@@ -88,14 +92,16 @@ int main(int argc, char *argv[])
     gemm_blis_A3B2C0('C', 'C', 'C', 'T', 'N', kh * kw * c, kn, ho * wo * b, alpha, image, ho * wo * b, out, ho * wo * b, beta, kernel2, kh * kw * c, ac_pack, pack_RB_nchw, bc_pack, pack_CB_nchw_trans, cc_pack, NULL, cntx, &dim, NULL);
     t2 = get_time();
     t_nchw = t2 - t1;
-    printf(" %e", t_nchw);
+    if (r > 0) printf(" %e", t_nchw);
 
     if (!check(c * kh * kw * kn, kernel_gemm, kernel2)) {
         printf(" error in gemm_blis_A3B2C0 'T' NCHW\n");
         return 3;
     }
 
-    printf("\n");
+    if (r > 0) printf("\n");
+
+    }
 
     return 0;
 }

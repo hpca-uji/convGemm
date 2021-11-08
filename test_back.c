@@ -16,14 +16,17 @@ int main(int argc, char *argv[])
 {
     TEST_INIT
 
-    const float *kernel = random_alloc(kn * kh * kw * c);
-    const float *out    = random_alloc(kn * ho * wo * b);
+    float *kernel = random_alloc(kn * kh * kw * c);
+    float *out    = random_alloc(kn * ho * wo * b);
 
     float *aux        = malloc(c * kh * kw * ho * wo * b * sizeof(float));
     float *aux_trans  = malloc(kn * ho * wo * b * sizeof(float));
     float *image      = malloc(b * h * w * c * sizeof(float));
     float *image2     = malloc(b * h * w * c * sizeof(float));
     float *image_gemm = malloc(b * h * w * c * sizeof(float));
+
+    for (int r = 0; r < rep; r++) {
+    if (r > 0) printf("%d %d %d", c * kh * kw, ho * wo * b, kn);
 
     double t1 = get_time();
     sgemm('T', 'N', c * kh * kw, ho * wo * b, kn, alpha, kernel, kn, out, kn, 0.0, aux, c * kh * kw);
@@ -37,7 +40,7 @@ int main(int argc, char *argv[])
     double t_gemm = t2 - t1;
     double t_row2im = t3 - t2;
     double t_nhwc = t4 - t3;
-    printf("\t%e %e %e", t_gemm, t_row2im, t_nhwc);
+    if (r > 0) printf("\t%e %e %e", t_gemm, t_row2im, t_nhwc);
 
     if (!check(b * h * w * c, image_gemm, image)) {
         printf(" error in gemm_blis_B3A2C0 NHWC\n");
@@ -49,7 +52,7 @@ int main(int argc, char *argv[])
     gemm_blis_A3B2C0('C', 'C', 'C', 'T', 'N', c * kh * kw, ho * wo * b, kn, alpha, kernel, kn, out, kn, 1.0, image2, c * kh * kw, ac_pack, pack_RB, bc_pack, pack_CB, cc_pack, post_row2im_nhwc, cntx, &dim, NULL);
     t2 = get_time();
     t_nhwc = t2 - t1;
-    printf(" %e", t_nhwc);
+    if (r > 0) printf(" %e", t_nhwc);
 
     if (!check(b * h * w * c, image_gemm, image2)) {
         printf(" error in gemm_blis_A3B2C0 NHWC\n");
@@ -72,7 +75,7 @@ int main(int argc, char *argv[])
     t_gemm = t3 - t2;
     double t_col2im = t4 - t3;
     double t_nchw = t5 - t4;
-    printf("\t%e %e %e %e", t_trans, t_gemm, t_col2im, t_nchw);
+    if (r > 0) printf("\t%e %e %e %e", t_trans, t_gemm, t_col2im, t_nchw);
 
     if (!check(b * h * w * c, image_gemm, image)) {
         printf(" error in gemm_back NCHW\n");
@@ -84,14 +87,16 @@ int main(int argc, char *argv[])
     gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'T', b * ho * wo, c * kh * kw, kn, alpha, out, b * ho * wo, kernel, c * kh * kw, 1.0, image2, b * ho * wo, ac_pack, pack_RB_nchw_trans, bc_pack, pack_CB, cc_pack, post_col2im_nchw, cntx, &dim, NULL);
     t2 = get_time();
     t_nchw = t2 - t1;
-    printf(" %e", t_nchw);
+    if (r > 0) printf(" %e", t_nchw);
 
     if (!check(b * h * w * c, image_gemm, image2)) {
         printf(" error in gemm_blis_A3B2C0 NCHW\n");
         return 2;
     }
 
-    printf("\n");
+    if (r > 0) printf("\n");
+
+    }
 
     return 0;
 }

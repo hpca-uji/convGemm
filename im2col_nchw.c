@@ -19,7 +19,7 @@ void pack_RB_nchw(char orderM, char transM, int mc, int nc, const float *restric
         int start_ky =  start_j % d->kwidth;
         int start_kx = (start_j / d->kwidth) % d->kheight;
         int start_c  = (start_j / d->kwidth) / d->kheight;
-        // #pragma omp parallel for
+        #pragma omp parallel for
         for (int i = 0; i < mc; i += RR) {
             int k  = i * nc;
             int rr = min(mc - i, RR);
@@ -63,7 +63,7 @@ void pack_RB_nchw(char orderM, char transM, int mc, int nc, const float *restric
         int start_y =  start_j % d->owidth;
         int start_x = (start_j / d->owidth) % d->oheight;
         int start_b = (start_j / d->owidth) / d->oheight;
-        // #pragma omp parallel for
+        #pragma omp parallel for
         for (int i = 0; i < mc; i += RR) {
             int k  = i*nc;
             int rr = min(mc - i, RR);
@@ -108,7 +108,7 @@ void pack_RB_nchw(char orderM, char transM, int mc, int nc, const float *restric
 void im2col_nchw(float *restrict cols, int ld, const float *restrict in, int batch, int channel, int height, int width, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
 {
 #if 1
-    // #pragma omp parallel for
+    #pragma omp parallel for
     for (int b = 0; b < batch; b++)
         for (int c = 0; c < channel; c++)
             for (int kx = 0; kx < kheight; kx++)
@@ -169,6 +169,7 @@ void transpose_nchw(int rows, int cols, const float *restrict in, int ld, float 
     int start_y =  start_row % wo;
     int start_x = (start_row / wo) % ho;
     int start_b = (start_row / wo) / ho;
+    #pragma omp parallel for
     for (int j = 0; j < cols; j++) {
         int y = start_y;
         int x = start_x;
@@ -191,6 +192,7 @@ void pack_CB_nchw_trans(char orderM, char transM, int mc, int nc, const float *r
   BLIS pack for M-->Mc transposing first and second tensor dimensions
 */
     if ( ((transM=='N')&&( orderM=='C')) || ((transM=='T')&&( orderM=='R')) ) {
+        #pragma omp parallel for
         for (int j = 0; j < nc; j += RR) {
             int k = j * mc;
             int nr = min(nc - j, RR);
@@ -216,6 +218,7 @@ void pack_CB_nchw_trans(char orderM, char transM, int mc, int nc, const float *r
         }
     } else {
         // TODO
+        abort();
         for (int j = 0; j < nc; j += RR) {
             int k = j * mc;
             int nr = min(nc - j, RR);
@@ -241,6 +244,7 @@ void pack_RB_nchw_trans(char orderM, char transM, int mc, int nc, const float *r
   BLIS pack for M-->Mc transposing first and second tensor dimensions
 */
     if (((transM == 'N') && (orderM == 'C')) || ((transM == 'T') && (orderM == 'R'))) {
+        #pragma omp parallel for
         for (int i = 0; i < mc; i += RR) {
             int k = i * nc;
             int rr = min(mc - i, RR);
@@ -264,6 +268,7 @@ void pack_RB_nchw_trans(char orderM, char transM, int mc, int nc, const float *r
         }
     } else {
         // TODO
+        abort();
         for (int i = 0; i < mc; i += RR) {
             int k = i * nc;
             int rr = min(mc - i, RR);
@@ -289,6 +294,7 @@ void pack_transpose_nchw(int rows, int cols, const float *restrict in, int ld, f
     int start_y =  start_row % wo;
     int start_x = (start_row / wo) % ho;
     int start_k = (start_row / wo) / ho;
+    #pragma omp parallel for
     for (int j = 0; j < cols; j++) {
         int y = start_y;
         int x = start_x;
@@ -306,6 +312,7 @@ void pack_transpose_nchw(int rows, int cols, const float *restrict in, int ld, f
 
 void col2im_nchw(int m, int n, const float *restrict cols, int ld, float *restrict out, int batch, int channel, int height, int width, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
 {
+    #pragma omp parallel for
     for (int b = 0; b < batch; b++)
         for (int c = 0; c < channel; c++)
             for (int kx = 0; kx < kheight; kx++)
@@ -365,6 +372,7 @@ void add_bias_transpose_nchw(int mr, int nr, const float *restrict Cc, int ldCc,
     int start_y =  start_row % dim->owidth;
     int start_x = (start_row / dim->owidth) % dim->oheight;
     int start_b = (start_row / dim->owidth) / dim->oheight;
+    #pragma omp parallel for
     for (int j = 0; j < nr; j++) {
         int y = start_y;
         int x = start_x;

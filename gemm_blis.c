@@ -55,7 +55,7 @@ void pack_RB( char orderM, char transM, int mc, int nc, const float *restrict M,
 
   if ( ((transM=='N')&&( orderM=='C'))||
        ((transM=='T')&&( orderM=='R')) )
-    // #pragma omp parallel for private(j, ii, rr, k)
+    #pragma omp parallel for private(i, j, ii, rr, k)
     for ( i=0; i<mc; i+=RR ) { 
       k = i*nc;
       rr = min( mc-i, RR );
@@ -72,7 +72,7 @@ void pack_RB( char orderM, char transM, int mc, int nc, const float *restrict M,
       }
     }
   else
-    // #pragma omp parallel for private(j, ii, rr, k)
+    #pragma omp parallel for private(i, j, ii, rr, k)
     for ( i=0; i<mc; i+=RR ) { 
       k = i*nc;
       rr = min( mc-i, RR );
@@ -108,7 +108,7 @@ void pack_CB( char orderM, char transM, int mc, int nc, const float *restrict M,
   k = 0;
   if ( ((transM=='N')&&( orderM=='C'))||
        ((transM=='T')&&( orderM=='R')) )
-    // #pragma omp parallel for private(i, jj, nr, k)
+    #pragma omp parallel for private(i, j, jj, nr, k)
     for ( j=0; j<nc; j+=RR ) { 
       k = j*mc;
       nr = min( nc-j, RR );
@@ -125,7 +125,7 @@ void pack_CB( char orderM, char transM, int mc, int nc, const float *restrict M,
       }
     }
   else
-    // #pragma omp parallel for private(i, jj, nr, k)
+    #pragma omp parallel for private(i, j, jj, nr, k)
     for ( j=0; j<nc; j+=RR ) { 
       k = j*mc;
       nr = min( nc-j, RR );
