@@ -188,33 +188,30 @@ void post_row2im_nhwc(int n, int m, const float *restrict rows, int ldr, float b
     /* int m = oheight * owidth * batch;
     int n = channel * kheight * kwidth; */
 
-    // starting values for the first row
-    // int row = (b * oheight + x) * owidth + y;
-    int y =  start_row % d->owidth;
-    int x = (start_row / d->owidth) % d->oheight;
-    int b = (start_row / d->owidth) / d->oheight;
     // starting values for the first column
     // int col = (c * kheight + kx) * kwidth + ky;
     int start_ky =  start_col % d->kwidth;
     int start_kx = (start_col / d->kwidth) % d->kheight;
     int start_c  = (start_col / d->kwidth) / d->kheight;
 
-    // #pragma omp parallel for
+    #pragma omp parallel for
     for (int row = 0; row < m; row++) {
+        // int row = (b * oheight + x) * owidth + y;
+        int y =  (start_row + row) % d->owidth;
+        int x = ((start_row + row) / d->owidth) % d->oheight;
+        int b = ((start_row + row) / d->owidth) / d->oheight;
         for (int col = 0, c = start_c, kx = start_kx, ky = start_ky; col < n; col++) {
             int ix = d->vstride * x + d->vdilation * kx - d->vpadding;
             int iy = d->hstride * y + d->hdilation * ky - d->hpadding;
             if (0 <= ix && ix < d->height && 0 <= iy && iy < d->width) {
                 // in[b, ix, iy, c] += rows[row, col]
+                #pragma omp atomic
                 out[((b * d->height + ix) * d->width + iy) * d->channel + c] += rows[row * ldr + col];
             }
             ky++; if (ky >= d->kwidth) { ky = 0;
             kx++; if (kx >= d->kheight) { kx = 0;
             c++; } }
         }
-        y++; if (y >= d->owidth) { y = 0;
-        x++; if (x >= d->oheight) { x = 0;
-        b++; } }
     }
 }
 

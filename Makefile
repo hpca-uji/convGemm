@@ -23,15 +23,15 @@ rungemm: test_gemm
 
 runtest: test test.in
 	rm -f test.out
-	while read line; do echo $$line; for j in 1 2 3 4 5; do ./test 6 $$line >> test.out || break; done; done < test.in
+	while read line; do echo $$line; for j in 1 2 3 4 5; do ./test 6 $$line >> test.out || exit; done; done < test.in
 
 runtrans: test_trans test.in
 	rm -f test_trans.out
-	while read line; do echo $$line; for j in 1 2 3 4 5; do ./test_trans 6 $$line >> test_trans.out || break; done ; done < test.in
+	while read line; do echo $$line; for j in 1 2 3 4 5; do ./test_trans 6 $$line >> test_trans.out || exit; done ; done < test.in
 
 runback: test_back test.in
 	rm -f test_back.out
-	while read line; do echo $$line; for j in 1 2 3 4 5; do ./test_back 6 $$line >> test_back.out || break; done ; done < test.in
+	while read line; do echo $$line; for j in 1 2 3 4 5; do ./test_back 6 $$line >> test_back.out || exit; done ; done < test.in
 
 test.in: test.pl test.txt
 	perl $^ > $@
