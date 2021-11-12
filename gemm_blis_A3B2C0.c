@@ -115,21 +115,17 @@ void gemm_blis_A3B2C0(char orderA, char orderB, char orderC,
                         float *Cptr = (orderC == 'C') ? &Ccol(ic + ir, jc + jr) : &Crow(ic + ir, jc + jr);
                         float *Clocal = Cc + ir + jr * MC;
 
-                        if (postprocess == NULL) {
-                            if (nr == NR && mr == MR) { // don't use buffer
+                        if (postprocess == NULL && nr == NR && mr == MR) { // don't use buffer
                                 gemm_kernel(kc, &alpha, &Ac[ir * kc], &Bc[jr * kc], &betaI, Cptr, 1, ldC, NULL, cntx);
-                            } else {    // use buffer for border elements
-                                gemm_kernel(kc, &alpha, &Ac[ir * kc], &Bc[jr * kc], &zero, Clocal, 1, MC, NULL, cntx);
-                                sxpbyM(mr, nr, Clocal, MC, betaI, Cptr, ldC);
-                            }
-                        } else {        // use buffer for postprocessing
+                        } else { // use buffer for border elements or postprocessing
                             gemm_kernel(kc, &alpha, &Ac[ir * kc], &Bc[jr * kc], &zero, Clocal, 1, MC, NULL, cntx);
-                            // postprocess(mr, nr, Clocal, MC, betaI, C, ldC, dim, bias_vector, ic + ir, jc + jr, pc == 0);
+                            if (postprocess == NULL) {
+                                sxpbyM(mr, nr, Clocal, MC, betaI, Cptr, ldC);
+                            } else {
+                                postprocess(mr, nr, Clocal, MC, betaI, C, ldC, dim, bias_vector, ic + ir, jc + jr, pc == 0);
+                            }
                         }
                     }
-                }
-                if (postprocess != NULL) {
-                    postprocess(mc, nc, Cc, MC, betaI, C, ldC, dim, bias_vector, ic, jc, pc == 0);
                 }
             }
         }

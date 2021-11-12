@@ -288,28 +288,6 @@ void pack_RB_nchw_trans(char orderM, char transM, int mc, int nc, const float *r
     }
 }
 
-void pack_transpose_nchw(int rows, int cols, const float *restrict in, int ld, float *restrict out, int b, int ho, int wo, int start_row, int start_col)
-{
-    // transpose first and second dimension
-    int start_y =  start_row % wo;
-    int start_x = (start_row / wo) % ho;
-    int start_k = (start_row / wo) / ho;
-    #pragma omp parallel for
-    for (int j = 0; j < cols; j++) {
-        int y = start_y;
-        int x = start_x;
-        int k = start_k;
-        for (int i = 0; i < rows; i++) {
-            // out[((b * kn + k) * ho + x) * wo + y] = in[((j * batch + b) * ho + x) * wo + y];
-            int idx = ((k * b + start_col + j) * ho + x) * wo + y;
-            out[j * ld + i] = in[idx];
-            y++; if (y >= wo) { y = 0;
-            x++; if (x >= ho) { x = 0;
-            k++; } }
-        }
-    }
-}
-
 void col2im_nchw(int m, int n, const float *restrict cols, int ld, float *restrict out, int batch, int channel, int height, int width, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation)
 {
     #pragma omp parallel for
@@ -343,7 +321,6 @@ void post_col2im_nchw(int n, int m, const float *restrict cols, int ldc, float b
     int start_x = (start_col / d->owidth) % d->oheight;
     int start_b = (start_col / d->owidth) / d->oheight;
 
-    #pragma omp parallel for
     for (int row = 0; row < m; row++) {
         // int row = (c * kheight + kx) * kwidth + ky;
         int ky =  (start_row + row) % d->kwidth;
@@ -369,7 +346,6 @@ void add_bias_transpose_nchw(int mr, int nr, const float *restrict Cc, int ldCc,
     int start_y =  start_row % dim->owidth;
     int start_x = (start_row / dim->owidth) % dim->oheight;
     int start_b = (start_row / dim->owidth) / dim->oheight;
-    #pragma omp parallel for
     for (int j = 0; j < nr; j++) {
         int y = start_y;
         int x = start_x;

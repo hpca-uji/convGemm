@@ -194,7 +194,6 @@ void post_row2im_nhwc(int n, int m, const float *restrict rows, int ldr, float b
     int start_kx = (start_col / d->kwidth) % d->kheight;
     int start_c  = (start_col / d->kwidth) / d->kheight;
 
-    #pragma omp parallel for
     for (int row = 0; row < m; row++) {
         // int row = (b * oheight + x) * owidth + y;
         int y =  (start_row + row) % d->owidth;
@@ -220,38 +219,19 @@ void add_bias_nhwc(int mr, int nr, const float *restrict Cc, int ldCc, float bet
     float *Cptr = C + start_row + start_col * ldC;
     if (last) {
         if (beta == 0.0) {
-            #pragma omp parallel for
             for (int j = 0; j < nr; j++)
                 for (int i = 0; i < mr; i++)
                     Cptr[j * ldC + i] = Cc[j * ldCc + i] + bias_vector[start_row + i];
         } else if (beta = 1.0) {
-            #pragma omp parallel for
             for (int j = 0; j < nr; j++)
                 for (int i = 0; i < mr; i++)
                     Cptr[j * ldC + i] += Cc[j * ldCc + i] + bias_vector[start_row + i];
         } else {
-            #pragma omp parallel for
             for (int j = 0; j < nr; j++)
                 for (int i = 0; i < mr; i++)
                     Cptr[j * ldC + i] = beta * Cptr[j * ldC + i] + Cc[j * ldCc + i] + bias_vector[start_row + i];
         }
     } else {
-        // sxpbyM(mr, nr, Cc, ldCc, beta, C + start_row + start_col * ldC, ldC);
-        if (beta == 0.0) {
-            #pragma omp parallel for
-            for (int j = 0; j < nr; j++)
-                for (int i = 0; i < mr; i++)
-                    Cptr[j * ldC + i] = Cc[j * ldCc + i];
-        } else if (beta = 1.0) {
-            #pragma omp parallel for
-            for (int j = 0; j < nr; j++)
-                for (int i = 0; i < mr; i++)
-                    Cptr[j * ldC + i] += Cc[j * ldCc + i];
-        } else {
-            #pragma omp parallel for
-            for (int j = 0; j < nr; j++)
-                for (int i = 0; i < mr; i++)
-                    Cptr[j * ldC + i] = beta * Cptr[j * ldC + i] + Cc[j * ldCc + i];
-        }
+        sxpbyM(mr, nr, Cc, ldCc, beta, C + start_row + start_col * ldC, ldC);
     }
 }
