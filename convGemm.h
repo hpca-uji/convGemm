@@ -1,5 +1,3 @@
-int alloc_pack_buffs(float** Ac_pack, float** Bc_pack, float** Cc_pack);
-
 void sconvGemmNHWC(char trans,
                     unsigned b, unsigned h, unsigned w, unsigned c,
                     unsigned kn, unsigned kh, unsigned kw,

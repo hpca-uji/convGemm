@@ -9,22 +9,6 @@
 #include "im2row_nhwc.h"
 #include "im2col_nchw.h"
 
-int alloc_pack_buffs(float** Ac_pack, float** Bc_pack, float** Cc_pack)
-{
-    bli_init();
-    cntx_t *cntx = bli_gks_query_cntx();
-    int NC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NC, cntx);
-    int MC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MC, cntx);
-    int KC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_KC, cntx);
-
-    *Ac_pack = aligned_alloc(4096, MC * KC * sizeof(float));
-    *Bc_pack = aligned_alloc(4096, KC * NC * sizeof(float));
-    *Cc_pack = aligned_alloc(4096, MC * NC * sizeof(float));
-
-    if(*Ac_pack == NULL || *Bc_pack == NULL || *Cc_pack == NULL) return 1;
-    return 0;
-}
-
 void sconvGemmNHWC(char trans,
                     unsigned b, unsigned h, unsigned w, unsigned c,
                     unsigned kn, unsigned kh, unsigned kw,

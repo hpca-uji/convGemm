@@ -37,30 +37,30 @@ float diff(int n, const float *Cref, const float *C)
     else return maxdiff / cref_diff;
 }
 
-void post_sxpbyM(int m, int n, const float *restrict X, int ldx, float beta, float *restrict Y, int ldy, const convol_dim *dim, const float *bias_vector, int start_row, int start_col, bool last)
-{
-    Y = Y + start_col * ldy + start_row;
-    if (beta == 0.0) {
-        // #pragma omp parallel for
-        for (int j = 0; j < n; j++)
-            for (int i = 0; i < m; i++)
-                Y[j * ldy + i] = X[j * ldx + i];
-    } else if (beta = 1.0) {
-        // #pragma omp parallel for
-        for (int j = 0; j < n; j++)
-            for (int i = 0; i < m; i++)
-                Y[j * ldy + i] += X[j * ldx + i];
-    } else {
-        // #pragma omp parallel for
-        for (int j = 0; j < n; j++)
-            for (int i = 0; i < m; i++)
-                Y[j * ldy + i] = beta * Y[j * ldy + i] + X[j * ldx + i];
-    }
-}
-
 int main(int argc, char *argv[])
 {
-    if (argc < 5) {
+    int m, n, k, rep;
+    if (strcmp(argv[1], "nchw") == 0) {
+        rep = atoi(argv[2]);
+        int b   = atoi(argv[3]);
+        int h   = atoi(argv[4]);
+        int w   = atoi(argv[5]);
+        int c   = atoi(argv[6]);
+        int kn  = atoi(argv[7]);
+        int kh  = atoi(argv[8]);
+        int kw  = atoi(argv[9]);
+        int vpadding  = argc > 10 ? atoi(argv[10]) : 1;
+        int hpadding  = argc > 11 ? atoi(argv[11]) : 1;
+        int vstride   = argc > 12 ? atoi(argv[12]) : 1;
+        int hstride   = argc > 13 ? atoi(argv[13]) : 1;
+        int vdilation = argc > 14 ? atoi(argv[14]) : 1;
+        int hdilation = argc > 15 ? atoi(argv[15]) : 1;
+        int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1;
+        int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
+        m = ho * wo * b, n = kn, k = kh * kw * c;
+    } else if (argc == 5) {
+        m = atoi(argv[1]), n = atoi(argv[2]), k = atoi(argv[3]), rep = atoi(argv[4]);
+    } else {
         fprintf(stderr, "Missing arguments: M N K rep\n");
         return 1;
     }
@@ -70,14 +70,21 @@ int main(int argc, char *argv[])
     sgemm_ukr_ft gemm_kernel = bli_cntx_get_l3_nat_ukr_dt      (BLIS_FLOAT, BLIS_GEMM, cntx);
     int MR                   = bli_cntx_get_blksz_def_dt       (BLIS_FLOAT, BLIS_MR,   cntx);
     int NR                   = bli_cntx_get_blksz_def_dt       (BLIS_FLOAT, BLIS_NR,   cntx);
-    int PACKMR               = bli_cntx_get_blksz_max_dt       (BLIS_FLOAT, BLIS_MR,   cntx);
-    int PACKNR               = bli_cntx_get_blksz_max_dt       (BLIS_FLOAT, BLIS_NR,   cntx);
-    bool row_pref            = bli_cntx_get_l3_nat_ukr_prefs_dt(BLIS_FLOAT, BLIS_GEMM, cntx);
-    int NC                   = bli_cntx_get_blksz_def_dt       (BLIS_FLOAT, BLIS_NC,   cntx);
-    int MC                   = bli_cntx_get_blksz_def_dt       (BLIS_FLOAT, BLIS_MC,   cntx);
-    int KC                   = bli_cntx_get_blksz_def_dt       (BLIS_FLOAT, BLIS_KC,   cntx);
+    // int PACKMR               = bli_cntx_get_blksz_max_dt       (BLIS_FLOAT, BLIS_MR,   cntx);
+    // int PACKNR               = bli_cntx_get_blksz_max_dt       (BLIS_FLOAT, BLIS_NR,   cntx);
+    // bool row_pref            = bli_cntx_get_l3_nat_ukr_prefs_dt(BLIS_FLOAT, BLIS_GEMM, cntx);
+    int MC, NC, KC;
+    gemm_blis_workspace(cntx, &MC, &NC, &KC);
     // BLIS_POOL_ADDR_ALIGN_SIZE, KR
-    // printf("kernel = %p MR = %d NR = %d packmr = %d packnr = %d row_pref = %d NC = %d MC = %d KC = %d\n", gemm_kernel, MR, NR, PACKMR, PACKNR, row_pref, NC, MC, KC);
+    printf("# MR = %d NR = %d MC = %d NC = %d KC = %d\n", MR, NR, MC, NC, KC);
+
+    int NC2 = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NC, cntx);
+    int MC2 = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MC, cntx);
+    int KC2 = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_KC, cntx);
+    printf("# MR = %d NR = %d BLIS_MC = %d BLIS_NC = %d BLIS_KC = %d\n", MR, NR, MC2, NC2, KC2);
+    NC = NC > NC2 ? NC : NC2;
+    MC = MC > MC2 ? MC : MC2;
+    KC = KC > KC2 ? KC : KC2;
 
     bli_thread_set_num_threads(omp_get_max_threads());
 
@@ -99,14 +106,13 @@ int main(int argc, char *argv[])
         if (d > maxdiff) maxdiff = d;
     } */
 
-    int m = atoi(argv[1]), n = atoi(argv[2]), k = atoi(argv[3]), rep = atoi(argv[4]);
     float *A = malloc(m * k * sizeof(float));
     float *B = malloc(k * n * sizeof(float));
     float *C1 = malloc(m * n * sizeof(float));
     float *C2 = malloc(m * n * sizeof(float));
     float *C3 = malloc(m * n * sizeof(float));
     float *Cref = malloc(m * n * sizeof(float));
-    float *Ac = aligned_alloc(4096, MC * KC * sizeof(float));
+    float *Ac = aligned_alloc(4096, omp_get_max_threads() * MC * KC * sizeof(float));
     float *Bc = aligned_alloc(4096, KC * NC * sizeof(float));
     float *Cc = aligned_alloc(4096, MC * NC * sizeof(float));
 
@@ -124,9 +130,9 @@ int main(int argc, char *argv[])
         double t2 = get_time();
         bli_sgemm(BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, m, n, k, &alpha, A, 1, m, B, 1, k, &beta, C1, 1, m);
         double t3 = get_time();
-        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C2, m, Ac, pack_RB, Bc, pack_CB, Cc, post_sxpbyM /*NULL*/, cntx, NULL, NULL);
+        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C2, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL, NULL);
         double t4 = get_time();
-        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, n, 0.0, C3, m, Ac, pack_RB, Bc, pack_CB, Cc, post_sxpbyM /*NULL*/, cntx, NULL, NULL);
+        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C3, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL, NULL);
         double t5 = get_time();
 
         printf("%d %d %d ", m, n, k);

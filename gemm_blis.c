@@ -38,6 +38,21 @@
 #include "convGemm.h"
 #include "gemm_blis.h"
 
+int alloc_pack_buffs(float** Ac_pack, float** Bc_pack, float** Cc_pack)
+{
+    bli_init();
+    cntx_t *cntx = bli_gks_query_cntx();
+    int MC, NC, KC;
+    gemm_blis_workspace(cntx, &MC, &NC, &KC);
+
+    *Ac_pack = aligned_alloc(4096, omp_get_max_threads() *MC * KC * sizeof(float));
+    *Bc_pack = aligned_alloc(4096, KC * NC * sizeof(float));
+    *Cc_pack = aligned_alloc(4096, MC * NC * sizeof(float));
+
+    if(*Ac_pack == NULL || *Bc_pack == NULL || *Cc_pack == NULL) return 1;
+    return 0;
+}
+
 void pack_RB( char orderM, char transM, int mc, int nc, const float *restrict M, int ldM, float *restrict Mc, int RR, const convol_dim *d, int start_row, int start_col ){
 /*
   BLIS pack for M-->Mc
@@ -55,7 +70,7 @@ void pack_RB( char orderM, char transM, int mc, int nc, const float *restrict M,
 
   if ( ((transM=='N')&&( orderM=='C'))||
        ((transM=='T')&&( orderM=='R')) )
-    #pragma omp parallel for private(i, j, ii, rr, k)
+    // #pragma omp parallel for private(i, j, ii, rr, k)
     for ( i=0; i<mc; i+=RR ) { 
       k = i*nc;
       rr = min( mc-i, RR );
@@ -64,7 +79,7 @@ void pack_RB( char orderM, char transM, int mc, int nc, const float *restrict M,
           Mc[k] = Mcol(i+ii,j);
           k++;
         }
-        for ( ; ii<RR; ii++ ) {
+        for ( ii=rr; ii<RR; ii++ ) {
           Mc[k] = 0.0;
           k++;
         }
@@ -72,7 +87,7 @@ void pack_RB( char orderM, char transM, int mc, int nc, const float *restrict M,
       }
     }
   else
-    #pragma omp parallel for private(i, j, ii, rr, k)
+    // #pragma omp parallel for private(i, j, ii, rr, k)
     for ( i=0; i<mc; i+=RR ) { 
       k = i*nc;
       rr = min( mc-i, RR );
@@ -81,7 +96,7 @@ void pack_RB( char orderM, char transM, int mc, int nc, const float *restrict M,
           Mc[k] = Mcol(j,i+ii);
           k++;
         }
-        for ( ; ii<RR; ii++ ) {
+        for ( ii=rr; ii<RR; ii++ ) {
           Mc[k] = 0.0;
           k++;
         }
@@ -117,7 +132,7 @@ void pack_CB( char orderM, char transM, int mc, int nc, const float *restrict M,
           Mc[k] = Mcol(i,j+jj);
           k++;
         }
-        for ( ; jj<RR; jj++ ) {
+        for ( jj=nr; jj<RR; jj++ ) {
           Mc[k] = 0.0;
           k++;
         }
@@ -134,7 +149,7 @@ void pack_CB( char orderM, char transM, int mc, int nc, const float *restrict M,
           Mc[k] = Mcol(j+jj,i);
           k++;
         }
-        for ( ; jj<RR; jj++ ) {
+        for ( jj=nr; jj<RR; jj++ ) {
           Mc[k] = 0.0;
           k++;
         }

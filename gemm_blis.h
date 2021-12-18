@@ -32,3 +32,63 @@ void pack_CB(char, char, int, int, const float *, int, float *, int, const convo
 void unpack_RB( char, char, int, int, float *, int, const float *, int );
 void unpack_CB( char, char, int, int, float *, int, const float *, int );
 void sxpbyM(int, int, const float *, int, float, float *, int);
+
+int alloc_pack_buffs(float** Ac_pack, float** Bc_pack, float** Cc_pack);
+
+inline static double model_level(double NL, double CL, double WL, double Sdata, double m, double n)
+{
+/*
+  Purpose
+    Estimate the dimension of the panels that will fit into a given level of the cache hierarchy following the
+    principles in the paper "Analytical modeling is enough for enough for high performance BLIS" by
+    T. M. Low et al, 2016
+
+  Inputs:
+     NL:    Number of sets
+     CL:    Bytes per line
+     WL:    Associativity degree
+     (m,n): Dimensions of block in higher level of cache
+     Sdata: Bytes per element (e.g., 8 for FP64)
+
+  Output
+     k:     Determines that a block of size k x n stays in this level of the cache
+
+  Rule of thumb: subtract 1 line from WL (associativity), which is dedicated to the
+  operand which does not reside in the cache, and distribute the rest between the two
+  other operands proportionaly to the ratio n/m
+  For example, with the conventional algorithm B3A2B1C0 and the L1 cache,
+  1 line is dedicated to Cr (non-resident in cache) while the remaining lines are distributed
+  between Ar (mr x kc) and Br (kc x nr) proportionally to the ratio nr/mr to estimate kc
+*/
+    double CAr = floor( ( WL - 1 ) / (1 + n/m) ); // Lines of each set for Ar
+    if (CAr==0) { // Special case
+        CAr = 1;
+        // CBr = WL-2;
+    } else {
+        // CBr = ceil( ( n / m ) * CAr ); // Lines of each set for Br
+    }
+    return floor( CAr * NL * CL / (m * Sdata) );
+}
+
+inline static void gemm_blis_workspace(cntx_t *cntx, int *MC, int *NC, int *KC)
+{
+#if 0
+    *MC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MC, cntx);
+    *NC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NC, cntx);
+    *KC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_KC, cntx);
+#else
+    // *NC = 3072;
+    // *KC = 368; //640
+    // *MC = 560; //120
+    int MR = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MR, cntx);
+    int NR = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NR, cntx);
+    int Sdata=4;
+    int SL1=64*1024, WL1=4, NL1 = 256, CL1 = SL1 / (WL1 * NL1);
+    int SL2=1*1024*1024, WL2=16, NL2 = 2048, CL2 = SL2 / (WL2 * NL2);
+    int SL3=4*1024*1024, WL3=16, NL3 = 4096, CL3 = SL3 / (WL3 * NL3);
+    *KC = model_level(NL1, CL1, WL1, Sdata, MR, NR);
+    *MC = model_level(NL2, CL2, WL2, Sdata, *KC, NR);
+    *NC = model_level(NL3, CL3, WL3, Sdata, *KC, *MC);
+    // *MC = 448; *NC = 1020; *KC = 512;
+#endif
+}

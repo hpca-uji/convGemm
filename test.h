@@ -53,12 +53,8 @@ static inline bool check(int n, float *a, float *b)
     bli_init(); \
     cntx_t *cntx = bli_gks_query_cntx(); \
     bli_thread_set_num_threads(omp_get_max_threads()); \
-    int NC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NC, cntx); \
-    int MC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MC, cntx); \
-    int KC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_KC, cntx); \
-    float *ac_pack = aligned_alloc(4096, MC * KC * sizeof(float)); \
-    float *bc_pack = aligned_alloc(4096, KC * NC * sizeof(float)); \
-    float *cc_pack = aligned_alloc(4096, MC * NC * sizeof(float)); \
+    float *ac_pack, *bc_pack, *cc_pack; \
+    alloc_pack_buffs(&ac_pack, &bc_pack, &cc_pack); \
     int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1; \
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1; \
     printf("# %d %d %d %d %d %d %d %d %d %d %d %d %d\n", b, h, w, c, kn, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation); \

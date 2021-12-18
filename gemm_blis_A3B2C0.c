@@ -55,9 +55,10 @@ void gemm_blis_A3B2C0(char orderA, char orderB, char orderC,
     sgemm_ukr_ft gemm_kernel = bli_cntx_get_l3_nat_ukr_dt(BLIS_FLOAT, BLIS_GEMM, cntx);
     int MR = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MR, cntx);
     int NR = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NR, cntx);
-    int NC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NC, cntx);
-    int MC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MC, cntx);
-    int KC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_KC, cntx);
+    int MC, NC, KC;
+    gemm_blis_workspace(cntx, &MC, &NC, &KC);
+    MC -= MC % MR;
+    NC -= NC % NR;
 
 /* 
   Computes the GEMM C := beta * C + alpha * A * B
@@ -93,7 +94,7 @@ void gemm_blis_A3B2C0(char orderA, char orderB, char orderC,
                 pack_CB(orderB, transB, kc, nc, B, ldB, Bc, NR, dim, pc, jc);
 
 #if 1
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for // collapse(2)
                 for (int ir = 0; ir < mc; ir += MR) {
                     for (int jr = 0; jr < nc; jr += NR) {
 #else
@@ -115,10 +116,14 @@ void gemm_blis_A3B2C0(char orderA, char orderB, char orderC,
                         float *Cptr = (orderC == 'C') ? &Ccol(ic + ir, jc + jr) : &Crow(ic + ir, jc + jr);
                         float *Clocal = Cc + ir + jr * MC;
 
+                        auxinfo_t aux = { 0 };
+                        bli_auxinfo_set_next_a(&Ac[(ir + MR) * kc], &aux);
+                        bli_auxinfo_set_next_b(&Bc[(jr + NR) * kc], &aux);
+
                         if (postprocess == NULL && nr == NR && mr == MR) { // don't use buffer
-                                gemm_kernel(kc, &alpha, &Ac[ir * kc], &Bc[jr * kc], &betaI, Cptr, 1, ldC, NULL, cntx);
+                                gemm_kernel(kc, &alpha, &Ac[ir * kc], &Bc[jr * kc], &betaI, Cptr, 1, ldC, &aux, cntx);
                         } else { // use buffer for border elements or postprocessing
-                            gemm_kernel(kc, &alpha, &Ac[ir * kc], &Bc[jr * kc], &zero, Clocal, 1, MC, NULL, cntx);
+                            gemm_kernel(kc, &alpha, &Ac[ir * kc], &Bc[jr * kc], &zero, Clocal, 1, MC, &aux, cntx);
                             if (postprocess == NULL) {
                                 sxpbyM(mr, nr, Clocal, MC, betaI, Cptr, ldC);
                             } else {
