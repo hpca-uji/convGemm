@@ -45,8 +45,8 @@ int alloc_pack_buffs(float** Ac_pack, float** Bc_pack, float** Cc_pack)
     int MC, NC, KC;
     gemm_blis_workspace(cntx, &MC, &NC, &KC);
 
-    *Ac_pack = aligned_alloc(4096, omp_get_max_threads() *MC * KC * sizeof(float));
-    *Bc_pack = aligned_alloc(4096, KC * NC * sizeof(float));
+    *Ac_pack = aligned_alloc(4096, omp_get_max_threads() * MC * KC * sizeof(float));
+    *Bc_pack = aligned_alloc(4096, omp_get_max_threads() * KC * NC * sizeof(float));
     *Cc_pack = aligned_alloc(4096, MC * NC * sizeof(float));
 
     if(*Ac_pack == NULL || *Bc_pack == NULL || *Cc_pack == NULL) return 1;

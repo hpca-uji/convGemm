@@ -88,46 +88,35 @@ void gemm_blis_A3B2C0(char orderA, char orderB, char orderC,
 
             float betaI = (pc == 0) ? beta : 1.0;
 
+#pragma omp parallel for
             for (int jc = 0; jc < n; jc += NC) {
                 int nc = min(n - jc, NC);
 
-                pack_CB(orderB, transB, kc, nc, B, ldB, Bc, NR, dim, pc, jc);
+                int tid = omp_get_thread_num();
 
-#if 1
-#pragma omp parallel for // collapse(2)
+                pack_CB(orderB, transB, kc, nc, B, ldB, Bc + tid * NC * KC, NR, dim, pc, jc);
+
+// #pragma omp parallel for collapse(2)
                 for (int ir = 0; ir < mc; ir += MR) {
                     for (int jr = 0; jr < nc; jr += NR) {
-#else
-                int iter_i = mc / MR; if (mc % MR != 0) iter_i++;
-                int iter_j = nc / NR; if (nc % NR != 0) iter_j++;
-                int iter = iter_i * iter_j;
-#pragma omp parallel for
-                for (int it = 0; it < iter; it++) {
-                    {
-                        int i = it / iter_j;
-                        int j = it % iter_j;
-                        int ir = i * MR;
-                        int jr = j * NR;
-#endif
 
                         int mr = min(mc - ir, MR);
                         int nr = min(nc - jr, NR);
 
                         float *Cptr = (orderC == 'C') ? &Ccol(ic + ir, jc + jr) : &Crow(ic + ir, jc + jr);
-                        float *Clocal = Cc + ir + jr * MC;
-
+                        float Clocal[MR * NR];
                         auxinfo_t aux = { 0 };
                         bli_auxinfo_set_next_a(&Ac[(ir + MR) * kc], &aux);
-                        bli_auxinfo_set_next_b(&Bc[(jr + NR) * kc], &aux);
+                        bli_auxinfo_set_next_b(&Bc[tid * NC * KC + (jr + NR) * kc], &aux);
 
                         if (postprocess == NULL && nr == NR && mr == MR) { // don't use buffer
-                                gemm_kernel(kc, &alpha, &Ac[ir * kc], &Bc[jr * kc], &betaI, Cptr, 1, ldC, &aux, cntx);
+                                gemm_kernel(kc, &alpha, &Ac[ir * kc], &Bc[tid * NC * KC + jr * kc], &betaI, Cptr, 1, ldC, &aux, cntx);
                         } else { // use buffer for border elements or postprocessing
-                            gemm_kernel(kc, &alpha, &Ac[ir * kc], &Bc[jr * kc], &zero, Clocal, 1, MC, &aux, cntx);
+                            gemm_kernel(kc, &alpha, &Ac[ir * kc], &Bc[tid * NC * KC + jr * kc], &zero, Clocal, 1, MR, &aux, cntx);
                             if (postprocess == NULL) {
-                                sxpbyM(mr, nr, Clocal, MC, betaI, Cptr, ldC);
+                                sxpbyM(mr, nr, Clocal, MR, betaI, Cptr, ldC);
                             } else {
-                                postprocess(mr, nr, Clocal, MC, betaI, C, ldC, dim, bias_vector, ic + ir, jc + jr, pc == 0);
+                                postprocess(mr, nr, Clocal, MR, betaI, C, ldC, dim, bias_vector, ic + ir, jc + jr, pc == 0);
                             }
                         }
                     }

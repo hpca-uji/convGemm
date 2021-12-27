@@ -32,9 +32,9 @@ void sconvGemmNHWC(char trans,
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
     convol_dim dim = { b, h, w, c, kn, kh, kw, vstride, hstride, vpadding, hpadding, vdilation, hdilation, ho, wo };
     if (trans == 'N') {
-        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, in, kn, x, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, cc_pack, bias_vector == NULL ? NULL : add_bias_nhwc, cntx, &dim, bias_vector);
+        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, in, kn, x, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, cc_pack, bias_vector == NULL ? NULL : add_bias_nhwc, cntx, &dim, bias_vector);
     } else {
-        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, in, kn, x, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, cc_pack, NULL, cntx, &dim, NULL);
+        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, alpha, in, kn, x, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, cc_pack, NULL, cntx, &dim, NULL);
     }
 }
 

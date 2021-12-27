@@ -19,7 +19,7 @@ void pack_CB_nhwc(char orderM, char transM, int mc, int nc, const float *restric
         int start_ky =  start_i % d->kwidth;
         int start_kx = (start_i / d->kwidth) % d->kheight;
         int start_c  = (start_i / d->kwidth) / d->kheight;
-        #pragma omp parallel for
+        // #pragma omp parallel for
         for (int j = 0; j < nc; j += RR) {
             int k = j * mc;
             int nr = min(nc - j, RR);
@@ -63,7 +63,7 @@ void pack_CB_nhwc(char orderM, char transM, int mc, int nc, const float *restric
         int start_y  =  (start_i) % d->owidth;
         int start_x  = ((start_i) / d->owidth) % d->oheight;
         int start_b  = ((start_i) / d->owidth) / d->oheight;
-        #pragma omp parallel for
+        // #pragma omp parallel for
         for (int j = 0; j < nc; j += RR) {
             int k = j * mc;
             int nr = min(nc - j, RR);
