@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
     // int PACKNR               = bli_cntx_get_blksz_max_dt       (BLIS_FLOAT, BLIS_NR,   cntx);
     // bool row_pref            = bli_cntx_get_l3_nat_ukr_prefs_dt(BLIS_FLOAT, BLIS_GEMM, cntx);
     int MC, NC, KC;
-    gemm_blis_workspace(cntx, &MC, &NC, &KC);
+    gemm_blis_workspace(cntx, m, n, k, &MC, &NC, &KC);
     // BLIS_POOL_ADDR_ALIGN_SIZE, KR
     printf("# MR = %d NR = %d MC = %d NC = %d KC = %d\n", MR, NR, MC, NC, KC);
 

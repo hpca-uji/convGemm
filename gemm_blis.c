@@ -43,7 +43,7 @@ int alloc_pack_buffs(float** Ac_pack, float** Bc_pack, float** Cc_pack)
     bli_init();
     cntx_t *cntx = bli_gks_query_cntx();
     int MC, NC, KC;
-    gemm_blis_workspace(cntx, &MC, &NC, &KC);
+    gemm_blis_workspace(cntx, 0, 0, 0, &MC, &NC, &KC);
 
     *Ac_pack = aligned_alloc(4096, omp_get_max_threads() * MC * KC * sizeof(float));
     *Bc_pack = aligned_alloc(4096, omp_get_max_threads() * KC * NC * sizeof(float));

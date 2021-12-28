@@ -56,7 +56,7 @@ void gemm_blis_B3A2C0(char orderA, char orderB, char orderC,
     int MR = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MR, cntx);
     int NR = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NR, cntx);
     int MC, NC, KC;
-    gemm_blis_workspace(cntx, &MC, &NC, &KC);
+    gemm_blis_workspace(cntx, m, n, k, &MC, &NC, &KC);
     MC -= MC % MR;
     NC -= NC % NR;
 /* 
