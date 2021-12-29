@@ -38,7 +38,7 @@
 #include "convGemm.h"
 #include "gemm_blis.h"
 
-int alloc_pack_buffs(int m, int n, int k, float** Ac_pack, float** Bc_pack)
+int alloc_pack_buffs(int m, int n, int k, float** Ac_pack, float** Bc_pack, float** Cc_pack)
 {
     bli_init();
     cntx_t *cntx = bli_gks_query_cntx();

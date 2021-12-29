@@ -33,7 +33,7 @@ void unpack_RB( char, char, int, int, float *, int, const float *, int );
 void unpack_CB( char, char, int, int, float *, int, const float *, int );
 void sxpbyM(int, int, const float *, int, float, float *, int);
 
-int alloc_pack_buffs(float** Ac_pack, float** Bc_pack, float** Cc_pack);
+int alloc_pack_buffs(int m, int n, int k, float** Ac_pack, float** Bc_pack, float** Cc_pack);
 
 inline static double model_level(double NL, double CL, double WL, double Sdata, double m, double n)
 {
@@ -86,12 +86,17 @@ inline static void gemm_blis_workspace(cntx_t *cntx, int m, int n, int k, int *M
     int SL1=64*1024, WL1=4, NL1 = 256, CL1 = SL1 / (WL1 * NL1);
     int SL2=1*1024*1024, WL2=16, NL2 = 2048, CL2 = SL2 / (WL2 * NL2);
     int SL3=4*1024*1024, WL3=16, NL3 = 4096, CL3 = SL3 / (WL3 * NL3);
+
     *KC = model_level(NL1, CL1, WL1, Sdata, MR, NR);
     if (k > 0 && *KC > k) *KC = k;
+
     *MC = model_level(NL2, CL2, WL2, Sdata, *KC, NR);
     if (m > 0 && *MC > m) *MC = m;
+    *MC = *MC - *MC % MR;
+    if (*MC < MR) *MC = MR;
+
     *NC = model_level(NL3, CL3, WL3, Sdata, *KC, *MC);
-    if (n > 0 && *NC > n) *NC = n;
+    // if (n > 0 && *NC > n) *NC = n;
     // *MC = 448; *NC = 1020; *KC = 512;
     // printf("m=%d n=%d k=%d MC=%d NC=%d KC=%d\n", m, n, k, *MC, *NC, *KC);
 #endif
