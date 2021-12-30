@@ -83,6 +83,7 @@ void gemm_blis_A3B2C0(char orderA, char orderB, char orderC,
 
         for (int pc = 0; pc < k; pc += KC) {
             int kc = min(k - pc, KC);
+            bool last = (pc + KC) >= k;
 
             pack_RB(orderA, transA, mc, kc, A, ldA, Ac, MR, dim, ic, pc);
 
@@ -116,7 +117,7 @@ void gemm_blis_A3B2C0(char orderA, char orderB, char orderC,
                             if (postprocess == NULL) {
                                 sxpbyM(mr, nr, Clocal, MR, betaI, Cptr, ldC);
                             } else {
-                                postprocess(mr, nr, Clocal, MR, betaI, C, ldC, dim, bias_vector, ic + ir, jc + jr, pc == 0);
+                                postprocess(mr, nr, Clocal, MR, betaI, C, ldC, dim, bias_vector, NULL, NULL, NULL, NULL, false, ic + ir, jc + jr, last);
                             }
                         }
                     }

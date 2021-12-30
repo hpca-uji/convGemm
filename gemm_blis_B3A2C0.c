@@ -48,7 +48,9 @@ void gemm_blis_B3A2C0(char orderA, char orderB, char orderC,
                       float *Bc, pack_func pack_CB,
                       float *Cc, post_func postprocess,
                       cntx_t * cntx, const convol_dim * dim,
-                      const float *bias_vector)
+                      const float *bias_vector,
+                      const float *bn_running_mean, const float *bn_inv_std,
+                      const float *bn_gamma, const float *bn_beta, bool relu)
 {
     float zero = 0.0, one = 1.0;
 
@@ -82,6 +84,7 @@ void gemm_blis_B3A2C0(char orderA, char orderB, char orderC,
 
         for (int pc = 0; pc < k; pc += KC) {
             int kc = min(k - pc, KC);
+            bool last = (pc + KC) >= k;
 
             pack_CB(orderB, transB, kc, nc, B, ldB, Bc, NR, dim, pc, jc);
 
@@ -115,7 +118,7 @@ void gemm_blis_B3A2C0(char orderA, char orderB, char orderC,
                             if (postprocess == NULL) {
                                 sxpbyM(mr, nr, Clocal, MR, betaI, Cptr, ldC);
                             } else {
-                                postprocess(mr, nr, Clocal, MR, betaI, C, ldC, dim, bias_vector, ic + ir, jc + jr, pc == 0);
+                                postprocess(mr, nr, Clocal, MR, betaI, C, ldC, dim, bias_vector, bn_running_mean, bn_inv_std, bn_gamma, bn_beta, relu, ic + ir, jc + jr, pc == 0);
                             }
                         }
                     }

@@ -23,7 +23,8 @@ extern double t_pack, t_kernel, t_generic;
 #endif
 
 void gemm_blis_B3A2C0( char, char, char, char, char, int, int, int, float, const float *, int, const float *, int, float, float *, int,
-                       float *, pack_func, float *, pack_func, float *, post_func, cntx_t *, const convol_dim *, const float *);
+                       float *, pack_func, float *, pack_func, float *, post_func, cntx_t *, const convol_dim *, const float *, const float *, const float *,
+                                           const float *, const float *, bool);
 void gemm_blis_A3B2C0( char, char, char, char, char, int, int, int, float, const float *, int, const float *, int, float, float *, int,
                        float *, pack_func, float *, pack_func, float *, post_func, cntx_t *, const convol_dim *, const float *);
 void gemm_base_Cresident( char, int, int, int, float, const float *, int, const float *, int, float, float *, int );

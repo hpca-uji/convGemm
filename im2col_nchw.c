@@ -310,7 +310,7 @@ void col2im_nchw(int m, int n, const float *restrict cols, int ld, float *restri
                 }
 }
 
-void post_col2im_nchw(int n, int m, const float *restrict cols, int ldc, float beta, float *restrict out, int ldout, const convol_dim *d, const float *restrict bias_vector, int start_col, int start_row, bool last)
+void post_col2im_nchw(int n, int m, const float *restrict cols, int ldc, float beta, float *restrict out, int ldout, const convol_dim *d, const float *restrict bias_vector, const float *bn_running_mean, const float *bn_inv_std, const float *bn_gamma, const float *bn_beta, bool relu, int start_col, int start_row, bool last)
 {
     /* int m = channel * kheight * kwidth;
     int n = oheight * owidth * batch; */
@@ -340,7 +340,7 @@ void post_col2im_nchw(int n, int m, const float *restrict cols, int ldc, float b
     }
 }
 
-void add_bias_transpose_nchw(int mr, int nr, const float *restrict Cc, int ldCc, float beta, float *restrict C, int ldC, const convol_dim *dim, const float *restrict bias_vector, int start_row, int start_col, bool last)
+void add_bias_transpose_nchw(int mr, int nr, const float *restrict Cc, int ldCc, float beta, float *restrict C, int ldC, const convol_dim *dim, const float *restrict bias_vector, const float *bn_running_mean, const float *bn_inv_std, const float *bn_gamma, const float *bn_beta, bool relu, int start_row, int start_col, bool last)
 {
     // transpose first and second dimension
     int start_y =  start_row % dim->owidth;
@@ -355,7 +355,14 @@ void add_bias_transpose_nchw(int mr, int nr, const float *restrict Cc, int ldCc,
             int idx = ((b * dim->kn + start_col + j) * dim->oheight + x) * dim->owidth + y;
             if (beta == 0.0) C[idx] = Cc[j * ldCc + i];
             else C[idx] = beta * C[idx] + Cc[j * ldCc + i];
-            if (last && bias_vector) C[idx] += bias_vector[start_col + j];
+            if (last) {
+                if (bias_vector) C[idx] += bias_vector[start_col + j];
+                if (bn_running_mean) {
+                    float tmp = (C[idx] - bn_running_mean[start_col + j]) * bn_inv_std[start_col + j];
+                    C[idx] = (tmp * bn_gamma[start_col + j]) + bn_beta[start_col + j];
+                }
+                if (relu && C[idx] < 0) C[idx] = 0;
+            }
             y++; if (y >= dim->owidth) { y = 0;
             x++; if (x >= dim->oheight) { x = 0;
             b++; } }
