@@ -38,7 +38,7 @@
 #include "convGemm.h"
 #include "gemm_blis.h"
 
-int alloc_pack_buffs(int m, int n, int k, float** Ac_pack, float** Bc_pack, float** Cc_pack)
+int alloc_pack_buffs(int m, int n, int k, float** Ac_pack, float** Bc_pack)
 {
     bli_init();
     cntx_t *cntx = bli_gks_query_cntx();
@@ -47,9 +47,8 @@ int alloc_pack_buffs(int m, int n, int k, float** Ac_pack, float** Bc_pack, floa
 
     *Ac_pack = aligned_alloc(4096, omp_get_max_threads() * MC * KC * sizeof(float));
     *Bc_pack = aligned_alloc(4096, omp_get_max_threads() * KC * NC * sizeof(float));
-    *Cc_pack = aligned_alloc(4096, MC * NC * sizeof(float));
 
-    if(*Ac_pack == NULL || *Bc_pack == NULL || *Cc_pack == NULL) return 1;
+    if(*Ac_pack == NULL || *Bc_pack == NULL) return 1;
     return 0;
 }
 

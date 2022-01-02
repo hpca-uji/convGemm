@@ -55,7 +55,7 @@ static inline bool check(int n, float *a, float *b)
     bli_thread_set_num_threads(omp_get_max_threads()); \
     int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1; \
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1; \
-    float *ac_pack, *bc_pack, *cc_pack; \
-    alloc_pack_buffs(ho * wo * b, kn, kh * kw * c, &ac_pack, &bc_pack, &cc_pack); \
+    float *ac_pack, *bc_pack; \
+    alloc_pack_buffs(ho * wo * b, kn, kh * kw * c, &ac_pack, &bc_pack); \
     printf("# %d %d %d %d %d %d %d %d %d %d %d %d %d\n", b, h, w, c, kn, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation); \
     convol_dim dim = { b, h, w, c, kn, kh, kw, vstride, hstride, vpadding, hpadding, vdilation, hdilation, ho, wo };

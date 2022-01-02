@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
         double t3 = get_time();
         gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C2, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL, NULL, NULL, NULL, NULL, NULL, false);
         double t4 = get_time();
-        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C3, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL, NULL);
+        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C3, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL, NULL, NULL, NULL, NULL, NULL, false);
         double t5 = get_time();
 
         printf("%d %d %d ", m, n, k);

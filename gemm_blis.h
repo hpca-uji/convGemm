@@ -34,7 +34,7 @@ void unpack_RB( char, char, int, int, float *, int, const float *, int );
 void unpack_CB( char, char, int, int, float *, int, const float *, int );
 void sxpbyM(int, int, const float *, int, float, float *, int);
 
-int alloc_pack_buffs(int m, int n, int k, float** Ac_pack, float** Bc_pack, float** Cc_pack);
+int alloc_pack_buffs(int m, int n, int k, float** Ac_pack, float** Bc_pack);
 
 inline static double model_level(double NL, double CL, double WL, double Sdata, double m, double n)
 {
@@ -73,7 +73,7 @@ inline static double model_level(double NL, double CL, double WL, double Sdata, 
 
 inline static void gemm_blis_workspace(cntx_t *cntx, int m, int n, int k, int *MC, int *NC, int *KC)
 {
-#if 0
+#if 1
     *MC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MC, cntx);
     *NC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NC, cntx);
     *KC = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_KC, cntx);
