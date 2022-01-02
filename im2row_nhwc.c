@@ -183,7 +183,7 @@ void row2im_nhwc(int m, int n, const float *restrict rows, int ld, float *restri
             }
 }
 
-void post_row2im_nhwc(int n, int m, const float *restrict rows, int ldr, float beta, float *restrict out, int ldout, const convol_dim *d, const float *restrict bias_vector, const float *bn_running_mean, const float *bn_inv_std, const float *bn_gamma, const float *bn_beta, bool relu, int start_col, int start_row, bool last)
+void post_row2im_nhwc(int n, int m, const float *restrict rows, int ldr, float beta, float *restrict out, int ldout, const convol_dim *d, int start_col, int start_row, bool last)
 {
     /* int m = oheight * owidth * batch;
     int n = channel * kheight * kwidth; */
@@ -214,22 +214,22 @@ void post_row2im_nhwc(int n, int m, const float *restrict rows, int ldr, float b
     }
 }
 
-void add_bias_nhwc(int mr, int nr, const float *restrict Cc, int ldCc, float beta, float *restrict C, int ldC, const convol_dim *dim, const float *bias_vector, const float *bn_running_mean, const float *bn_inv_std, const float *bn_gamma, const float *bn_beta, bool relu, int start_row, int start_col, bool last)
+void add_bias_nhwc(int mr, int nr, const float *restrict Cc, int ldCc, float beta, float *restrict C, int ldC, const convol_dim *dim, int start_row, int start_col, bool last)
 {
     float *Cptr = C + start_row + start_col * ldC;
     if (last) {
         if (beta == 0.0) {
             for (int j = 0; j < nr; j++)
                 for (int i = 0; i < mr; i++)
-                    Cptr[j * ldC + i] = Cc[j * ldCc + i] + bias_vector[start_row + i];
+                    Cptr[j * ldC + i] = Cc[j * ldCc + i] + dim->bias_vector[start_row + i];
         } else if (beta = 1.0) {
             for (int j = 0; j < nr; j++)
                 for (int i = 0; i < mr; i++)
-                    Cptr[j * ldC + i] += Cc[j * ldCc + i] + bias_vector[start_row + i];
+                    Cptr[j * ldC + i] += Cc[j * ldCc + i] + dim->bias_vector[start_row + i];
         } else {
             for (int j = 0; j < nr; j++)
                 for (int i = 0; i < mr; i++)
-                    Cptr[j * ldC + i] = beta * Cptr[j * ldC + i] + Cc[j * ldCc + i] + bias_vector[start_row + i];
+                    Cptr[j * ldC + i] = beta * Cptr[j * ldC + i] + Cc[j * ldCc + i] + dim->bias_vector[start_row + i];
         }
     } else {
         sxpbyM(mr, nr, Cc, ldCc, beta, C + start_row + start_col * ldC, ldC);

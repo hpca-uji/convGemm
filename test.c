@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 
     float *image = random_alloc(b * h * w * c);
     float *kernel = random_alloc(kn * kh * kw * c);
-    float *bias_vector = random_alloc(kn);
+    dim.bias_vector = random_alloc(kn);
 
     float *out       = malloc(kn * ho * wo * b * sizeof(float));
     float *out2      = malloc(kn * ho * wo * b * sizeof(float));
@@ -42,9 +42,9 @@ int main(int argc, char *argv[])
     #pragma omp parallel for
     for (int j = 0; j < ho * wo * b; j++) // add bias
         for (int i = 0; i < kn; i++)
-            out_gemm[i + j * kn] += bias_vector[i];
+            out_gemm[i + j * kn] += dim.bias_vector[i];
     double t3 = get_time();
-    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, image, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, NULL, add_bias_nhwc, cntx, &dim, bias_vector, NULL, NULL, NULL, NULL, false);
+    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, image, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, NULL, add_bias_nhwc, cntx, &dim);
     double t4 = get_time();
     double t_gemm = t2 - t1;
     double t_extra = t3 - t2;
@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
     }
 
     t1 = get_time();
-    gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, image, kh * kw * c, beta, out2, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, NULL, add_bias_nhwc, cntx, &dim, bias_vector);
+    gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, image, kh * kw * c, beta, out2, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, NULL, add_bias_nhwc, cntx, &dim, dim.bias_vector);
     t2 = get_time();
     t_nhwc = t2 - t1;
     if (r > 0) printf(" %e", t_nhwc);
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
     #pragma omp parallel for
     for (int i = 0; i < kn; i++) // add bias
         for (int j = 0; j < ho * wo * b; j++)
-            aux_trans[i * ho * wo * b + j] += bias_vector[i];
+            aux_trans[i * ho * wo * b + j] += dim.bias_vector[i];
     // transpose first and second dimension
     #pragma omp parallel for
     for (int i = 0; i < b; i++)
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
                 for (int y = 0; y < wo; y++)
                     out_gemm[((i * kn + j) * ho + x) * wo + y] = aux_trans[((j * b + i) * ho + x) * wo + y];
     t3 = get_time();
-    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, image, ho * wo * b, kernel, kh * kw * c, beta, out, ho * wo * b, ac_pack, pack_RB_nchw, bc_pack, pack_CB, NULL, add_bias_transpose_nchw, cntx, &dim, bias_vector, NULL, NULL, NULL, NULL, false);
+    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, image, ho * wo * b, kernel, kh * kw * c, beta, out, ho * wo * b, ac_pack, pack_RB_nchw, bc_pack, pack_CB, NULL, add_bias_transpose_nchw, cntx, &dim);
     t4 = get_time();
     t_gemm = t2 - t1;
     t_extra = t3 - t2;
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     }
 
     t1 = get_time();
-    gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, image, ho * wo * b, kernel, kh * kw * c, beta, out2, ho * wo * b, ac_pack, pack_RB_nchw, bc_pack, pack_CB, NULL, add_bias_transpose_nchw, cntx, &dim, bias_vector);
+    gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, image, ho * wo * b, kernel, kh * kw * c, beta, out2, ho * wo * b, ac_pack, pack_RB_nchw, bc_pack, pack_CB, NULL, add_bias_transpose_nchw, cntx, &dim, dim.bias_vector);
     t2 = get_time();
     t_nchw = t2 - t1;
     if (r > 0) printf(" %e", t_nchw);

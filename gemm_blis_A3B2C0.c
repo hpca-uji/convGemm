@@ -117,7 +117,7 @@ void gemm_blis_A3B2C0(char orderA, char orderB, char orderC,
                             if (postprocess == NULL) {
                                 sxpbyM(mr, nr, Clocal, MR, betaI, Cptr, ldC);
                             } else {
-                                postprocess(mr, nr, Clocal, MR, betaI, C, ldC, dim, bias_vector, NULL, NULL, NULL, NULL, false, ic + ir, jc + jr, last);
+                                postprocess(mr, nr, Clocal, MR, betaI, C, ldC, dim, ic + ir, jc + jr, last);
                             }
                         }
                     }

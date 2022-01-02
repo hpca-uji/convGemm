@@ -4,6 +4,6 @@ void pack_CB_nhwc(char orderM, char transM, int mc, int nc, const float *M, int 
 
 void row2im_nhwc(int m, int n, const float *rows, int ld, float *out, int batch, int height, int width, int channel, int oheight, int owidth, int kheight, int kwidth, int vpadding, int hpadding, int vstride, int hstride, int vdilation, int hdilation);
 
-void post_row2im_nhwc(int m, int n, const float *rows, int ldr, float beta, float *out, int ldout, const convol_dim *d, const float *bias_vector, const float *bn_running_mean, const float *bn_inv_std, const float *bn_gamma, const float *bn_beta, bool relu, int start_row, int start_col, bool last);
+void post_row2im_nhwc(int m, int n, const float *rows, int ldr, float beta, float *out, int ldout, const convol_dim *d, int start_row, int start_col, bool last);
 
-void add_bias_nhwc(int mr, int nr, const float *Cc, int ldCc, float beta, float *C, int ldC, const convol_dim *dim, const float *bias_vector, const float *bn_running_mean, const float *bn_inv_std, const float *bn_gamma, const float *bn_beta, bool relu, int start_row, int start_col, bool last);
+void add_bias_nhwc(int mr, int nr, const float *Cc, int ldCc, float beta, float *C, int ldC, const convol_dim *dim, int start_row, int start_col, bool last);

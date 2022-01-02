@@ -42,11 +42,17 @@ void sconvGemmNCHW_back(unsigned b, unsigned c, unsigned h, unsigned w,
 
 typedef struct {
     int batch, height, width, channel, kn, kheight, kwidth, vstride, hstride, vpadding, hpadding, vdilation, hdilation, oheight, owidth;
+    const float *bias_vector;
+    const float *running_mean;
+    const float *inv_std;
+    const float *gamma;
+    const float *beta;
+    bool relu;
 } convol_dim;
 
 typedef void (*pack_func)(char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const convol_dim *d, int start_row, int start_col);
 
-typedef void (*post_func)(int mr, int nr, const float *Cc, int ldCc, float beta, float *C, int ldC, const convol_dim *dim, const float *bias_vector,                     const float *bn_running_mean, const float *bn_inv_std, const float *bn_gamma, const float *bn_beta, bool relu, int start_row, int start_col, bool last);
+typedef void (*post_func)(int mr, int nr, const float *Cc, int ldCc, float beta, float *C, int ldC, const convol_dim *dim, int start_row, int start_col, bool last);
 
 static inline double get_time()
 {
