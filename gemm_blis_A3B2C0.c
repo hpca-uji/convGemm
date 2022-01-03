@@ -47,8 +47,7 @@ void gemm_blis_A3B2C0(char orderA, char orderB, char orderC,
                       float *Ac, pack_func pack_RB,
                       float *Bc, pack_func pack_CB,
                       float *Cc, post_func postprocess,
-                      cntx_t * cntx, const convol_dim * dim,
-                      const float *bias_vector)
+                      cntx_t * cntx, const convol_dim * dim)
 {
     float zero = 0.0, one = 1.0;
 

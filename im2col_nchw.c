@@ -350,11 +350,10 @@ inline void add_bias_transpose_nchw_inline(int mr, int nr, const float *restrict
         int y = start_y;
         int x = start_x;
         int b = start_b;
-        int k;
-        if (last) k = start_col + j;
+        int k = start_col + j;
         for (int i = 0; i < mr; i++) {
             // out[((b * kn + k) * ho + x) * wo + y] = in[((j * batch + b) * ho + x) * wo + y];
-            int idx = ((b * dim->kn + start_col + j) * dim->oheight + x) * dim->owidth + y;
+            int idx = ((b * dim->kn + k) * dim->oheight + x) * dim->owidth + y;
             float tmp = Cc[j * ldCc + i];
             if (beta != 0.0) tmp += C[idx];
             if (last) {

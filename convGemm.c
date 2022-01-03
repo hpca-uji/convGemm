@@ -30,11 +30,11 @@ void sconvGemmNHWC(char trans,
     cntx_t *cntx = bli_gks_query_cntx();
     int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1;
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
-    convol_dim dim = { b, h, w, c, kn, kh, kw, vstride, hstride, vpadding, hpadding, vdilation, hdilation, ho, wo };
+    convol_dim dim = { b, h, w, c, kn, kh, kw, vstride, hstride, vpadding, hpadding, vdilation, hdilation, ho, wo, bias_vector };
     if (trans == 'N') {
-        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, 1.0, in, kn, x, kh * kw * c, 0.0, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, NULL, bias_vector == NULL ? NULL : add_bias_nhwc, cntx, &dim, bias_vector);
+        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, 1.0, in, kn, x, kh * kw * c, 0.0, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, NULL, bias_vector == NULL ? NULL : add_bias_nhwc, cntx, &dim);
     } else {
-        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, 1.0, in, kn, x, kh * kw * c, 0.0, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, NULL, NULL, cntx, &dim, NULL);
+        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, 1.0, in, kn, x, kh * kw * c, 0.0, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, NULL, NULL, cntx, &dim);
     }
 }
 

@@ -25,7 +25,7 @@ extern double t_pack, t_kernel, t_generic;
 void gemm_blis_B3A2C0( char, char, char, char, char, int, int, int, float, const float *, int, const float *, int, float, float *, int,
                        float *, pack_func, float *, pack_func, float *, post_func, cntx_t *, const convol_dim *);
 void gemm_blis_A3B2C0( char, char, char, char, char, int, int, int, float, const float *, int, const float *, int, float, float *, int,
-                       float *, pack_func, float *, pack_func, float *, post_func, cntx_t *, const convol_dim *, const float *);
+                       float *, pack_func, float *, pack_func, float *, post_func, cntx_t *, const convol_dim *);
 void gemm_base_Cresident( char, int, int, int, float, const float *, int, const float *, int, float, float *, int );
 void pack_RB(char, char, int, int, const float *, int, float *, int, const convol_dim *, int, int);
 void pack_CB(char, char, int, int, const float *, int, float *, int, const convol_dim *, int, int);
