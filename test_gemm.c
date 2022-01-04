@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
         double t2 = get_time();
         bli_sgemm(BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, m, n, k, &alpha, A, 1, m, B, 1, k, &beta, C1, 1, m);
         double t3 = get_time();
-        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C2, m, Ac, pack_RB, Bc, pack_CB, NULL, cntx, NULL);
+        gemm_blis_B3A2C0_orig('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C2, m, Ac, pack_RB, Bc, pack_CB, NULL, cntx, NULL);
         double t4 = get_time();
         gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C3, m, Ac, pack_RB, Bc, pack_CB, NULL, cntx, NULL);
         double t5 = get_time();

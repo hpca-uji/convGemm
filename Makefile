@@ -36,16 +36,16 @@ runback: test_back test.in
 test.in: test.pl test.txt
 	perl $^ > $@
 
-test: test.o gemm_blis.o gemm_blis_B3A2C0.o gemm_blis_A3B2C0.o im2row_nhwc.o im2col_nchw.o
+test: test.o gemm_blis.o gemm_blis_B3A2C0.o gemm_blis_A3B2C0.o gemm_blis_B3A2C0_orig.o im2row_nhwc.o im2col_nchw.o
 	$(LINKER) -o $@ $^ $(LFLAGS)
 
-test_trans: test_trans.o gemm_blis.o gemm_blis_B3A2C0.o gemm_blis_A3B2C0.o im2row_nhwc.o im2col_nchw.o
+test_trans: test_trans.o gemm_blis.o gemm_blis_B3A2C0.o gemm_blis_A3B2C0.o gemm_blis_B3A2C0_orig.o im2row_nhwc.o im2col_nchw.o
 	$(LINKER) -o $@ $^ $(LFLAGS)
 
-test_back: test_back.o gemm_blis.o gemm_blis_B3A2C0.o gemm_blis_A3B2C0.o im2row_nhwc.o im2col_nchw.o
+test_back: test_back.o gemm_blis.o gemm_blis_B3A2C0.o gemm_blis_A3B2C0.o gemm_blis_B3A2C0_orig.o im2row_nhwc.o im2col_nchw.o
 	$(LINKER) -o $@ $^ $(LFLAGS)
 
-test_gemm: test_gemm.o gemm_blis.o gemm_blis_B3A2C0.o gemm_blis_A3B2C0.o
+test_gemm: test_gemm.o gemm_blis.o gemm_blis_B3A2C0.o gemm_blis_A3B2C0.o gemm_blis_B3A2C0_orig.o
 	$(LINKER) -o $@ $^ $(LFLAGS)
 
 %.o: %.c *.h

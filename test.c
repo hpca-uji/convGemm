@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
             out_gemm[i + j * kn] = tmp;
         }
     double t3 = get_time();
-    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, image, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, add_bias_nhwc, cntx, &dim);
+    gemm_blis_B3A2C0_orig('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, image, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, add_bias_nhwc, cntx, &dim);
     double t4 = get_time();
     double t_gemm = t2 - t1;
     double t_extra = t3 - t2;
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
                 for (int y = 0; y < wo; y++)
                     out_gemm[((i * kn + j) * ho + x) * wo + y] = aux_trans[((j * b + i) * ho + x) * wo + y];
     t3 = get_time();
-    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, image, ho * wo * b, kernel, kh * kw * c, beta, out, ho * wo * b, ac_pack, pack_RB_nchw, bc_pack, pack_CB, add_bias_transpose_nchw, cntx, &dim);
+    gemm_blis_B3A2C0_orig('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, image, ho * wo * b, kernel, kh * kw * c, beta, out, ho * wo * b, ac_pack, pack_RB_nchw, bc_pack, pack_CB, add_bias_transpose_nchw, cntx, &dim);
     t4 = get_time();
     t_gemm = t2 - t1;
     t_extra = t3 - t2;
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
     }
 
     t1 = get_time();
-    gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, image, ho * wo * b, kernel, kh * kw * c, beta, out2, ho * wo * b, ac_pack, pack_RB_nchw, bc_pack, pack_CB, add_bias_transpose_nchw, cntx, &dim);
+    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', ho * wo * b, kn, kh * kw * c, alpha, image, ho * wo * b, kernel, kh * kw * c, beta, out2, ho * wo * b, ac_pack, pack_RB_nchw, bc_pack, pack_CB, add_bias_transpose_nchw, cntx, &dim);
     t2 = get_time();
     t_nchw = t2 - t1;
     if (r > 0) printf(" %e", t_nchw);
