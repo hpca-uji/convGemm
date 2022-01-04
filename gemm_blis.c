@@ -35,22 +35,7 @@
 
 #include <blis.h>
 
-#include "convGemm.h"
 #include "gemm_blis.h"
-
-int alloc_pack_buffs(int m, int n, int k, float** Ac_pack, float** Bc_pack)
-{
-    bli_init();
-    cntx_t *cntx = bli_gks_query_cntx();
-    int MC, NC, KC;
-    gemm_blis_workspace(cntx, m, n, k, &MC, &NC, &KC);
-
-    *Ac_pack = aligned_alloc(4096, omp_get_max_threads() * MC * KC * sizeof(float));
-    *Bc_pack = aligned_alloc(4096, omp_get_max_threads() * KC * NC * sizeof(float));
-
-    if(*Ac_pack == NULL || *Bc_pack == NULL) return 1;
-    return 0;
-}
 
 void pack_RB( char orderM, char transM, int mc, int nc, const float *restrict M, int ldM, float *restrict Mc, int RR, const convol_dim *d, int start_row, int start_col ){
 /*

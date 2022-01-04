@@ -4,7 +4,6 @@
 
 #include <blis.h>
 
-#include "convGemm.h"
 #include "gemm_blis.h"
 #include "im2col_nchw.h"
 

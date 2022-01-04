@@ -4,7 +4,6 @@
 
 #include <blis.h>
 
-#include "convGemm.h"
 #include "gemm_blis.h"
 #include "im2row_nhwc.h"
 
@@ -214,24 +213,53 @@ void post_row2im_nhwc(int n, int m, const float *restrict rows, int ldr, float b
     }
 }
 
+inline void add_bias_nhwc_inline(int mr, int nr, const float *restrict Cc, int ldCc, float beta, float *restrict C, int ldC, const convol_dim *dim, int start_row, int start_col, bool bias, bool batchnorm, bool relu)
+{
+    for (int j = 0; j < nr; j++) {
+        const float *in = Cc + j * ldCc;
+        float *out = C + start_row + (start_col + j) * ldC;
+        for (int i = 0, ri = start_row; i < mr; i++, ri++) {
+            float tmp = in[i];
+            if (beta != 0.0) tmp += out[i];
+            if (bias) tmp += dim->bias_vector[ri]; // add bias
+            if (batchnorm) {
+                tmp = (tmp - dim->running_mean[ri]) * dim->inv_std[ri]; // batchnorm
+                tmp = (tmp * dim->gamma[ri]) + dim->beta[ri];
+            }
+            if (relu && tmp < 0) tmp = 0; // relu
+            out[i] = tmp;
+        }
+    }
+}
+
 void add_bias_nhwc(int mr, int nr, const float *restrict Cc, int ldCc, float beta, float *restrict C, int ldC, const convol_dim *dim, int start_row, int start_col, bool last)
 {
-    float *Cptr = C + start_row + start_col * ldC;
-    if (last) {
-        if (beta == 0.0) {
-            for (int j = 0; j < nr; j++)
-                for (int i = 0; i < mr; i++)
-                    Cptr[j * ldC + i] = Cc[j * ldCc + i] + dim->bias_vector[start_row + i];
-        } else if (beta = 1.0) {
-            for (int j = 0; j < nr; j++)
-                for (int i = 0; i < mr; i++)
-                    Cptr[j * ldC + i] += Cc[j * ldCc + i] + dim->bias_vector[start_row + i];
-        } else {
-            for (int j = 0; j < nr; j++)
-                for (int i = 0; i < mr; i++)
-                    Cptr[j * ldC + i] = beta * Cptr[j * ldC + i] + Cc[j * ldCc + i] + dim->bias_vector[start_row + i];
-        }
-    } else {
+    if (!last) {
         sxpbyM(mr, nr, Cc, ldCc, beta, C + start_row + start_col * ldC, ldC);
+#if 1
+    } else if (dim->bias_vector && dim->running_mean && dim->relu) {
+        // fused convgemm + bn + relu
+        if (beta == 0.0)
+            add_bias_nhwc_inline(mr, nr, Cc, ldCc, 0.0, C, ldC, dim, start_row, start_col, true, true, true);
+        else
+            add_bias_nhwc_inline(mr, nr, Cc, ldCc, 1.0, C, ldC, dim, start_row, start_col, true, true, true);
+
+    } else if (dim->bias_vector && dim->running_mean && !dim->relu) {
+        // fused convgemm + bn
+        if (beta == 0.0)
+            add_bias_nhwc_inline(mr, nr, Cc, ldCc, 0.0, C, ldC, dim, start_row, start_col, true, true, false);
+        else
+            add_bias_nhwc_inline(mr, nr, Cc, ldCc, 1.0, C, ldC, dim, start_row, start_col, true, true, false);
+
+    } else if (dim->bias_vector && !dim->running_mean && dim->relu) {
+        // fused convgemm + relu
+        if (beta == 0.0)
+            add_bias_nhwc_inline(mr, nr, Cc, ldCc, 0.0, C, ldC, dim, start_row, start_col, true, false, true);
+        else
+            add_bias_nhwc_inline(mr, nr, Cc, ldCc, 1.0, C, ldC, dim, start_row, start_col, true, false, true);
+#endif
+    } else {
+        // Unoptimized fallback
+        add_bias_nhwc_inline(mr, nr, Cc, ldCc, beta, C, ldC, dim, start_row, start_col, dim->bias_vector, dim->running_mean, dim->relu);
     }
 }

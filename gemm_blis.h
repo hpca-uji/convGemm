@@ -22,18 +22,37 @@ extern double t_pack, t_kernel, t_generic;
 #define END_BEGIN_TIMER(t)
 #endif
 
+typedef struct {
+    int batch, height, width, channel, kn, kheight, kwidth, vstride, hstride, vpadding, hpadding, vdilation, hdilation, oheight, owidth;
+    const float *bias_vector;
+    const float *running_mean;
+    const float *inv_std;
+    const float *gamma;
+    const float *beta;
+    bool relu;
+} convol_dim;
+
+typedef void (*pack_func)(char orderM, char transM, int mc, int nc, const float *M, int ldM, float *Mc, int RR, const convol_dim *d, int start_row, int start_col);
+
+typedef void (*post_func)(int mr, int nr, const float *Cc, int ldCc, float beta, float *C, int ldC, const convol_dim *dim, int start_row, int start_col, bool last);
+
+static inline double get_time()
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+    return ts.tv_sec + ts.tv_nsec * 1e-9;
+}
+
 void gemm_blis_B3A2C0( char, char, char, char, char, int, int, int, float, const float *, int, const float *, int, float, float *, int,
-                       float *, pack_func, float *, pack_func, float *, post_func, cntx_t *, const convol_dim *);
+                       float *, pack_func, float *, pack_func, post_func, cntx_t *, const convol_dim *);
 void gemm_blis_A3B2C0( char, char, char, char, char, int, int, int, float, const float *, int, const float *, int, float, float *, int,
-                       float *, pack_func, float *, pack_func, float *, post_func, cntx_t *, const convol_dim *);
+                       float *, pack_func, float *, pack_func, post_func, cntx_t *, const convol_dim *);
 void gemm_base_Cresident( char, int, int, int, float, const float *, int, const float *, int, float, float *, int );
 void pack_RB(char, char, int, int, const float *, int, float *, int, const convol_dim *, int, int);
 void pack_CB(char, char, int, int, const float *, int, float *, int, const convol_dim *, int, int);
 void unpack_RB( char, char, int, int, float *, int, const float *, int );
 void unpack_CB( char, char, int, int, float *, int, const float *, int );
 void sxpbyM(int, int, const float *, int, float, float *, int);
-
-int alloc_pack_buffs(int m, int n, int k, float** Ac_pack, float** Bc_pack);
 
 inline static double model_level(double NL, double CL, double WL, double Sdata, double m, double n)
 {

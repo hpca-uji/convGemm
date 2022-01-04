@@ -35,7 +35,6 @@
 
 #include <blis.h>
 
-#include "convGemm.h"
 #include "gemm_blis.h"
 
 void gemm_blis_A3B2C0(char orderA, char orderB, char orderC,
@@ -46,7 +45,7 @@ void gemm_blis_A3B2C0(char orderA, char orderB, char orderC,
                       float beta, float *C, int ldC,
                       float *Ac, pack_func pack_RB,
                       float *Bc, pack_func pack_CB,
-                      float *Cc, post_func postprocess,
+                      post_func postprocess,
                       cntx_t * cntx, const convol_dim * dim)
 {
     float zero = 0.0, one = 1.0;

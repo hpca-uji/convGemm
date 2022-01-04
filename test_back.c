@@ -7,7 +7,6 @@
 #include <blis.h>
 
 #include "test.h"
-#include "convGemm.h"
 #include "gemm_blis.h"
 #include "im2row_nhwc.h"
 #include "im2col_nchw.h"
@@ -35,7 +34,7 @@ int main(int argc, char *argv[])
     row2im_nhwc(ho * wo * b, c * kh * kw, aux, c * kh * kw, image_gemm, b, h, w, c, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
     double t3 = get_time();
     memset(image, 0, b * h * w * c * sizeof(float));
-    gemm_blis_B3A2C0('C', 'C', 'C', 'T', 'N', c * kh * kw, ho * wo * b, kn, alpha, kernel, kn, out, kn, 1.0, image, c * kh * kw, ac_pack, pack_RB, bc_pack, pack_CB, NULL, post_row2im_nhwc, cntx, &dim);
+    gemm_blis_B3A2C0('C', 'C', 'C', 'T', 'N', c * kh * kw, ho * wo * b, kn, alpha, kernel, kn, out, kn, 1.0, image, c * kh * kw, ac_pack, pack_RB, bc_pack, pack_CB, post_row2im_nhwc, cntx, &dim);
     double t4 = get_time();
     double t_gemm = t2 - t1;
     double t_row2im = t3 - t2;
@@ -49,7 +48,7 @@ int main(int argc, char *argv[])
 
     t1 = get_time();
     memset(image2, 0, b * h * w * c * sizeof(float));
-    gemm_blis_A3B2C0('C', 'C', 'C', 'T', 'N', c * kh * kw, ho * wo * b, kn, alpha, kernel, kn, out, kn, 1.0, image2, c * kh * kw, ac_pack, pack_RB, bc_pack, pack_CB, NULL, post_row2im_nhwc, cntx, &dim);
+    gemm_blis_A3B2C0('C', 'C', 'C', 'T', 'N', c * kh * kw, ho * wo * b, kn, alpha, kernel, kn, out, kn, 1.0, image2, c * kh * kw, ac_pack, pack_RB, bc_pack, pack_CB, post_row2im_nhwc, cntx, &dim);
     t2 = get_time();
     t_nhwc = t2 - t1;
     if (r > 0) printf(" %e", t_nhwc);
@@ -69,7 +68,7 @@ int main(int argc, char *argv[])
     col2im_nchw(c * kh * kw, b * ho * wo, aux, b * ho * wo, image_gemm, b, c, h, w, ho, wo, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation);
     t4 = get_time();
     memset(image, 0, b * h * w * c * sizeof(float));
-    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', b * ho * wo, c * kh * kw, kn, alpha, out, b * ho * wo, kernel, c * kh * kw, 1.0, image, b * ho * wo, ac_pack, pack_RB_nchw_trans, bc_pack, pack_CB, NULL, post_col2im_nchw, cntx, &dim);
+    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', b * ho * wo, c * kh * kw, kn, alpha, out, b * ho * wo, kernel, c * kh * kw, 1.0, image, b * ho * wo, ac_pack, pack_RB_nchw_trans, bc_pack, pack_CB, post_col2im_nchw, cntx, &dim);
     double t5 = get_time();
     double t_trans = t2 - t1;
     t_gemm = t3 - t2;
@@ -84,7 +83,7 @@ int main(int argc, char *argv[])
 
     t1 = get_time();
     memset(image2, 0, b * h * w * c * sizeof(float));
-    gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'T', b * ho * wo, c * kh * kw, kn, alpha, out, b * ho * wo, kernel, c * kh * kw, 1.0, image2, b * ho * wo, ac_pack, pack_RB_nchw_trans, bc_pack, pack_CB, NULL, post_col2im_nchw, cntx, &dim);
+    gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'T', b * ho * wo, c * kh * kw, kn, alpha, out, b * ho * wo, kernel, c * kh * kw, 1.0, image2, b * ho * wo, ac_pack, pack_RB_nchw_trans, bc_pack, pack_CB, post_col2im_nchw, cntx, &dim);
     t2 = get_time();
     t_nchw = t2 - t1;
     if (r > 0) printf(" %e", t_nchw);

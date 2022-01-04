@@ -6,7 +6,6 @@
 #define BLIS_DISABLE_BLAS_DEFS
 #include <blis.h>
 
-#include "convGemm.h"
 #include "gemm_blis.h"
 
 void sgemm_(char *transa, char *transb, int *m, int *n, int *k, float *alpha, const float *a, int *lda, const float *b, int *ldb, float *beta, float *c, int *ldc);
@@ -113,8 +112,7 @@ int main(int argc, char *argv[])
     float *C3 = malloc(m * n * sizeof(float));
     float *Cref = malloc(m * n * sizeof(float));
     float *Ac = aligned_alloc(4096, omp_get_max_threads() * MC * KC * sizeof(float));
-    float *Bc = aligned_alloc(4096, KC * NC * sizeof(float));
-    float *Cc = aligned_alloc(4096, MC * NC * sizeof(float));
+    float *Bc = aligned_alloc(4096, omp_get_max_threads() * KC * NC * sizeof(float));
 
     float alpha = 1.0;
     float beta = 0.0;
@@ -130,9 +128,9 @@ int main(int argc, char *argv[])
         double t2 = get_time();
         bli_sgemm(BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, m, n, k, &alpha, A, 1, m, B, 1, k, &beta, C1, 1, m);
         double t3 = get_time();
-        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C2, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL);
+        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C2, m, Ac, pack_RB, Bc, pack_CB, NULL, cntx, NULL);
         double t4 = get_time();
-        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C3, m, Ac, pack_RB, Bc, pack_CB, Cc, NULL, cntx, NULL);
+        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C3, m, Ac, pack_RB, Bc, pack_CB, NULL, cntx, NULL);
         double t5 = get_time();
 
         printf("%d %d %d ", m, n, k);
