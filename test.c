@@ -11,18 +11,28 @@
 #include "im2row_nhwc.h"
 #include "im2col_nchw.h"
 
+#define BIAS
+#define BATCH_NORM
+#define RELU
+
 int main(int argc, char *argv[])
 {
     TEST_INIT
 
     float *image = random_alloc(b * h * w * c);
     float *kernel = random_alloc(kn * kh * kw * c);
+#ifdef BIAS
     dim.bias_vector = random_alloc(kn);
+#endif
+#ifdef BATCH_NORM
     dim.running_mean = random_alloc(kn);
     dim.inv_std = random_alloc(kn);
     dim.gamma = random_alloc(kn);
     dim.beta = random_alloc(kn);
+#endif
+#ifdef RELU
     dim.relu = true;
+#endif
 
     float *out       = malloc(kn * ho * wo * b * sizeof(float));
     float *out2      = malloc(kn * ho * wo * b * sizeof(float));
@@ -43,18 +53,30 @@ int main(int argc, char *argv[])
     t1 = get_time();
     sgemm('N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, aux_nhwc, kh * kw * c, beta, out_gemm, kn);
     t2 = get_time();
+#ifdef BIAS
+    #pragma omp parallel for
+    for (int j = 0; j < ho * wo * b; j++)
+        for (int i = 0; i < kn; i++)
+            out_gemm[i + j * kn] += dim.bias_vector[i]; // add bias
+#endif
+#ifdef BATCH_NORM
     #pragma omp parallel for
     for (int j = 0; j < ho * wo * b; j++)
         for (int i = 0; i < kn; i++) {
             float tmp = out_gemm[i + j * kn];
-            tmp += dim.bias_vector[i]; // add bias
             tmp = (tmp - dim.running_mean[i]) * dim.inv_std[i]; // batchnorm
             tmp = (tmp * dim.gamma[i]) + dim.beta[i];
-            if (tmp < 0) tmp = 0; // relu
             out_gemm[i + j * kn] = tmp;
         }
+#endif
+#ifdef RELU
+    #pragma omp parallel for
+    for (int j = 0; j < ho * wo * b; j++)
+        for (int i = 0; i < kn; i++)
+            if (out_gemm[i + j * kn] < 0) out_gemm[i + j * kn] = 0; // relu
+#endif
     double t3 = get_time();
-    gemm_blis_B3A2C0_orig('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, image, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, add_bias_nhwc, cntx, &dim);
+    gemm_blis_B3A2C0_orig('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, image, kh * kw * c, beta, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, dim.bias_vector == NULL && dim.running_mean == NULL && dim.relu == false ? NULL : add_bias_nhwc, cntx, &dim);
     double t4 = get_time();
     double t_gemm = t2 - t1;
     double t_extra = t3 - t2;
@@ -67,7 +89,7 @@ int main(int argc, char *argv[])
     }
 
     t1 = get_time();
-    gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, image, kh * kw * c, beta, out2, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, add_bias_nhwc, cntx, &dim);
+    gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, alpha, kernel, kn, image, kh * kw * c, beta, out2, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, dim.bias_vector == NULL && dim.running_mean == NULL && dim.relu == false ? NULL : add_bias_nhwc, cntx, &dim);
     t2 = get_time();
     t_nhwc = t2 - t1;
     if (r > 0) printf(" %e", t_nhwc);
@@ -86,16 +108,28 @@ int main(int argc, char *argv[])
     t1 = get_time();
     sgemm('N', 'N', ho * wo * b, kn, kh * kw * c, alpha, aux_nchw, ho * wo * b, kernel, kh * kw * c, beta, aux_trans, ho * wo * b);
     t2 = get_time();
+#ifdef BIAS
+    #pragma omp parallel for
+    for (int i = 0; i < kn; i++)
+        for (int j = 0; j < ho * wo * b; j++)
+            aux_trans[i * ho * wo * b + j] += dim.bias_vector[i]; // add bias
+#endif
+#ifdef BATCH_NORM
     #pragma omp parallel for
     for (int i = 0; i < kn; i++)
         for (int j = 0; j < ho * wo * b; j++) {
             float tmp = aux_trans[i * ho * wo * b + j];
-            tmp += dim.bias_vector[i]; // add bias
             tmp = (tmp - dim.running_mean[i]) * dim.inv_std[i]; // batchnorm
             tmp = (tmp * dim.gamma[i]) + dim.beta[i];
-            if (tmp < 0) tmp = 0; // relu
             aux_trans[i * ho * wo * b + j] = tmp;
         }
+#endif
+#ifdef RELU
+    #pragma omp parallel for
+    for (int i = 0; i < kn; i++)
+        for (int j = 0; j < ho * wo * b; j++)
+            if (aux_trans[i * ho * wo * b + j] < 0) aux_trans[i * ho * wo * b + j] = 0; // relu
+#endif
     // transpose first and second dimension
     #pragma omp parallel for
     for (int i = 0; i < b; i++)
