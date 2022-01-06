@@ -39,7 +39,7 @@ float diff(int n, const float *Cref, const float *C)
 int main(int argc, char *argv[])
 {
     int m, n, k, rep;
-    if (strcmp(argv[1], "nchw") == 0) {
+    if (strcmp(argv[1], "nchw") == 0 || strcmp(argv[1], "nhwc") == 0) {
         rep = atoi(argv[2]);
         int b   = atoi(argv[3]);
         int h   = atoi(argv[4]);
@@ -56,7 +56,9 @@ int main(int argc, char *argv[])
         int hdilation = argc > 15 ? atoi(argv[15]) : 1;
         int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1;
         int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
-        m = ho * wo * b, n = kn, k = kh * kw * c;
+        if (strcmp(argv[1], "nchw") == 0) m = ho * wo * b, n = kn;
+        else n = ho * wo * b, m = kn;
+        k = kh * kw * c;
     } else if (argc == 5) {
         m = atoi(argv[1]), n = atoi(argv[2]), k = atoi(argv[3]), rep = atoi(argv[4]);
     } else {
@@ -75,12 +77,12 @@ int main(int argc, char *argv[])
     int MC, NC, KC;
     gemm_blis_workspace(cntx, m, n, k, &MC, &NC, &KC);
     // BLIS_POOL_ADDR_ALIGN_SIZE, KR
-    printf("# MR = %d NR = %d MC = %d NC = %d KC = %d\n", MR, NR, MC, NC, KC);
+    // printf("# MR = %d NR = %d MC = %d NC = %d KC = %d\n", MR, NR, MC, NC, KC);
 
     int NC2 = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NC, cntx);
     int MC2 = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MC, cntx);
     int KC2 = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_KC, cntx);
-    printf("# MR = %d NR = %d BLIS_MC = %d BLIS_NC = %d BLIS_KC = %d\n", MR, NR, MC2, NC2, KC2);
+    // printf("# MR = %d NR = %d BLIS_MC = %d BLIS_NC = %d BLIS_KC = %d\n", MR, NR, MC2, NC2, KC2);
     NC = NC > NC2 ? NC : NC2;
     MC = MC > MC2 ? MC : MC2;
     KC = KC > KC2 ? KC : KC2;

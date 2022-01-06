@@ -48,9 +48,9 @@ void sconvGemmNHWC(char trans,
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
     convol_dim dim = { b, h, w, c, kn, kh, kw, vstride, hstride, vpadding, hpadding, vdilation, hdilation, ho, wo, bias_vector, bn_running_mean, bn_inv_std, bn_gamma, bn_beta, relu };
     if (trans == 'N') {
-        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, 1.0, in, kn, x, kh * kw * c, 0.0, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, bias_vector == NULL && bn_running_mean == NULL && relu == false ? NULL : add_bias_nhwc, cntx, &dim);
+        gemm_blis_B3A2C0_orig('C', 'C', 'C', 'N', 'N', kn, ho * wo * b, kh * kw * c, 1.0, in, kn, x, kh * kw * c, 0.0, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, bias_vector == NULL && bn_running_mean == NULL && relu == false ? NULL : add_bias_nhwc, cntx, &dim);
     } else {
-        gemm_blis_A3B2C0('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, 1.0, in, kn, x, kh * kw * c, 0.0, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, NULL, cntx, &dim);
+        gemm_blis_B3A2C0_orig('C', 'C', 'C', 'N', 'T', kn, kh * kw * c, ho * wo * b, 1.0, in, kn, x, kh * kw * c, 0.0, out, kn, ac_pack, pack_RB, bc_pack, pack_CB_nhwc, NULL, cntx, &dim);
     }
 }
 
@@ -71,7 +71,7 @@ void sconvGemmNHWC_back(unsigned b, unsigned h, unsigned w, unsigned c,
     int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1;
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
     convol_dim dim = { b, h, w, c, kn, kh, kw, vstride, hstride, vpadding, hpadding, vdilation, hdilation, ho, wo };
-    gemm_blis_B3A2C0('C', 'C', 'C', 'T', 'N', c * kh * kw, ho * wo * b, kn, 1.0, weights, kn, dy, kn, 1.0, dx, c * kh * kw, ac_pack, pack_RB, bc_pack, pack_CB, post_row2im_nhwc, cntx, &dim);
+    gemm_blis_B3A2C0_orig('C', 'C', 'C', 'T', 'N', c * kh * kw, ho * wo * b, kn, 1.0, weights, kn, dy, kn, 1.0, dx, c * kh * kw, ac_pack, pack_RB, bc_pack, pack_CB, post_row2im_nhwc, cntx, &dim);
 }
 
 void sconvGemmNCHW(char trans,
@@ -115,5 +115,5 @@ void sconvGemmNCHW_back(unsigned b, unsigned c, unsigned h, unsigned w,
     int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1;
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1;
     convol_dim dim = { b, h, w, c, kn, kh, kw, vstride, hstride, vpadding, hpadding, vdilation, hdilation, ho, wo };
-    gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T', b * ho * wo, c * kh * kw, kn, 1.0, dy, b * ho * wo, weights, c * kh * kw, 1.0, dx, b * ho * wo, ac_pack, pack_RB_nchw_trans, bc_pack, pack_CB, post_col2im_nchw, cntx, &dim);
+    gemm_blis_B3A2C0_orig('C', 'C', 'C', 'N', 'T', b * ho * wo, c * kh * kw, kn, 1.0, dy, b * ho * wo, weights, c * kh * kw, 1.0, dx, b * ho * wo, ac_pack, pack_RB_nchw_trans, bc_pack, pack_CB, post_col2im_nchw, cntx, &dim);
 }

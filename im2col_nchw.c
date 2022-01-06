@@ -350,16 +350,24 @@ inline void add_bias_transpose_nchw_inline(int mr, int nr, const float *restrict
         int x = start_x;
         int b = start_b;
         int k = start_col + j;
+        float bv; if (last && bias) bv = dim->bias_vector[k];
+        float rm, is, ga, be;
+        if (last && batchnorm) {
+            rm = dim->running_mean[k];
+            is = dim->inv_std[k];
+            ga = dim->gamma[k];
+            be = dim->beta[k];
+        }
         for (int i = 0; i < mr; i++) {
             // out[((b * kn + k) * ho + x) * wo + y] = in[((j * batch + b) * ho + x) * wo + y];
             int idx = ((b * dim->kn + k) * dim->oheight + x) * dim->owidth + y;
             float tmp = Cc[j * ldCc + i];
             if (beta != 0.0) tmp += C[idx];
             if (last) {
-                if (bias) tmp += dim->bias_vector[k];
+                if (bias) tmp += bv;
                 if (batchnorm) {
-                    tmp = (tmp - dim->running_mean[k]) * dim->inv_std[k];
-                    tmp = (tmp * dim->gamma[k]) + dim->beta[k];
+                    tmp = (tmp - rm) * is;
+                    tmp = (tmp * ga) + be;
                 }
                 if (relu && tmp < 0) tmp = 0;
             }
@@ -373,13 +381,13 @@ inline void add_bias_transpose_nchw_inline(int mr, int nr, const float *restrict
 
 void add_bias_transpose_nchw(int mr, int nr, const float *restrict Cc, int ldCc, float beta, float *restrict C, int ldC, const convol_dim *dim, int start_row, int start_col, bool last)
 {
+#if 1
     if (!last) {
         if (beta == 0.0) // first pass
             add_bias_transpose_nchw_inline(mr, nr, Cc, ldCc, 0.0, C, ldC, dim, start_row, start_col, false, false, false, false);
         else // most common case
             add_bias_transpose_nchw_inline(mr, nr, Cc, ldCc, 1.0, C, ldC, dim, start_row, start_col, false, false, false, false);
 
-#if 1
     } else if (dim->bias_vector && dim->running_mean && dim->relu) {
         // fused convgemm + bn + relu
         if (beta == 0.0)
@@ -400,10 +408,12 @@ void add_bias_transpose_nchw(int mr, int nr, const float *restrict Cc, int ldCc,
             add_bias_transpose_nchw_inline(mr, nr, Cc, ldCc, 0.0, C, ldC, dim, start_row, start_col, true, true, false, true);
         else
             add_bias_transpose_nchw_inline(mr, nr, Cc, ldCc, 1.0, C, ldC, dim, start_row, start_col, true, true, false, true);
-#endif
 
     } else {
         // Unoptimized fallback
         add_bias_transpose_nchw_inline(mr, nr, Cc, ldCc, beta, C, ldC, dim, start_row, start_col, true, dim->bias_vector, dim->running_mean, dim->relu);
     }
+#else
+    add_bias_transpose_nchw_inline(mr, nr, Cc, ldCc, beta, C, ldC, dim, start_row, start_col, last, dim->bias_vector, dim->running_mean, dim->relu);
+#endif
 }
