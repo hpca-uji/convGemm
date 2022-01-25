@@ -310,7 +310,6 @@ void add_bias_nhwc(int mr, int nr, const float *restrict Cc, int ldCc, float bet
             add_bias_nhwc_inline(mr, nr, Cc, ldCc, 1.0, C, ldC, dim, start_row, start_col);
 
     } else { // Unoptimized fallback
-        // add_bias_nhwc_inline(mr, nr, Cc, ldCc, beta, C, ldC, dim, start_row, start_col);
-        printf("im2row_nhwc: unsupported operation\n");
+        add_bias_nhwc_inline(mr, nr, Cc, ldCc, beta, C, ldC, dim, start_row, start_col);
     }
 }
