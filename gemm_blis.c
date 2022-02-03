@@ -148,7 +148,7 @@ void sxpbyM(int m, int n, const float *restrict X, int ldx, float beta, float *r
         for (int j = 0; j < n; j++)
             for (int i = 0; i < m; i++)
                 Y[j * ldy + i] = X[j * ldx + i];
-    } else if (beta = 1.0) {
+    } else if (beta == 1.0) {
         for (int j = 0; j < n; j++)
             for (int i = 0; i < m; i++)
                 Y[j * ldy + i] += X[j * ldx + i];
