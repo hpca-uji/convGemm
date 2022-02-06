@@ -84,20 +84,16 @@ void gemm_blis_B3A2C0(char orderA, char orderB, char orderC,
                         bli_auxinfo_set_next_a(&Ac[tid * MC * KC + (ir + MR) * kc], &aux);
                         bli_auxinfo_set_next_b(&Bc[(jr + NR) * kc], &aux);
 
-                        if (postprocess == NULL && nr == NR && mr == MR) { // don't use buffer
+                        if (postprocess == NULL) { // don't use buffer
                             gemm_kernel(
                                     mr, nr,
-                                    kc, &alpha, &Ac[tid * MC * KC + ir * kc], &Bc[jr * kc], &betaI, Cptr, 1, ldC, &aux,
-                                    cntx);
+                                    kc, &alpha, &Ac[tid * MC * KC + ir * kc], &Bc[jr * kc], &betaI, Cptr, 1, ldC,
+                                    &aux, cntx);
                         } else { // use buffer for border elements or postprocessing
                             gemm_kernel(mr, nr,
                                         kc, &alpha, &Ac[tid * MC * KC + ir * kc], &Bc[jr * kc], &zero, Clocal, 1, MR,
                                         &aux, cntx);
-                            if (postprocess == NULL) {
-                                sxpbyM(mr, nr, Clocal, MR, betaI, Cptr, ldC);
-                            } else {
-                                postprocess(mr, nr, Clocal, MR, betaI, C, ldC, conv_params, ic + ir, jc + jr, last);
-                            }
+                            postprocess(mr, nr, Clocal, MR, betaI, C, ldC, conv_params, ic + ir, jc + jr, last);
                         }
                     }
                 }
