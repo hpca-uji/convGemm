@@ -5,7 +5,7 @@
 #include <blis/blis.h>
 #include <string.h>
 
-#include "test.h"
+#include "test_base.h"
 #include "../src/gemm_blis.h"
 #include "../src/im2row_nhwc.h"
 #include "../src/im2col_nchw.h"
