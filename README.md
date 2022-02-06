@@ -22,7 +22,7 @@ library:
 cd build
 cmake [-D CMAKE_PREFIX_PATH=BLIS_INSTALL_PREFIX] [-D CMAKE_INSTALL_PREFIX=INSTALL_PREFIX] ..
 make                 # Alternatively:  cmake --build . --clean-first
-make install         # Alternatively:  cmake --install .' (this does not work with cmake older versions)
+make install         # Alternatively:  cmake --install . (this does not work with cmake older versions)
 ```
 
 where ``BLIS_INSTALL_PREFIX`` is the prefix PATH where Blis is installed and ``INSTALL_PREFIX`` is the prefix PATH
@@ -44,7 +44,7 @@ that directory, the next commands should be executed:
 cd build
 cmake -D CMAKE_INSTALL_PREFIX=~/opt/hpca_pydtnn ..
 make                 # Alternatively:  cmake --build . --clean-first
-make install         # Alternatively:  cmake --install .' (this does not work with cmake older versions)
+make install         # Alternatively:  cmake --install . (this does not work with cmake older versions)
 ```
 
 
