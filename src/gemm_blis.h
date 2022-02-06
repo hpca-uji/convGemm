@@ -48,6 +48,7 @@ extern double t_pack, t_kernel, t_generic;
 
 extern cntx_t *blis_cntx;
 extern sgemm_ukr_ft blis_gemm_kernel;
+extern int blis_abi_version;
 
 typedef struct {
     int batches, height, width, channels, kn, kheight, kwidth;
@@ -65,13 +66,13 @@ void gemm_blis_init();
 inline void gemm_kernel(dim_t m, dim_t n, dim_t k, float *restrict alpha, float *restrict a, float *restrict b,
                         float *restrict beta, float *restrict c, inc_t rs_c0, inc_t cs_c0,
                         auxinfo_t *restrict data, cntx_t *restrict cntx) {
-#ifndef BLIS_ABI_VERSION
-#error Please, set BLIS_ABI_VERSION and compile again!
-#endif
-#if BLIS_ABI_VERSION <= 3
+#if BLIS_ABI_VERSION == 3
     blis_gemm_kernel(k, alpha, a, b, beta, c, rs_c0, cs_c0, data, cntx);
-#else
+#elif BLIS_ABI_VERSION == 4
     blis_gemm_kernel(m, n, k, alpha, a, b, beta, c, rs_c0, cs_c0, data, cntx);
+#else
+    printf("BLIS_ABI_VERSION %d is not supported yet!\n", BLIS_ABI_VERSION);
+    exit(2);
 #endif
 }
 

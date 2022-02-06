@@ -21,6 +21,7 @@
 
 cntx_t *blis_cntx = NULL;
 sgemm_ukr_ft blis_gemm_kernel = NULL;
+int blis_abi_version = BLIS_ABI_VERSION;
 
 /*
  * Initializes BLIS, blis_cntx and blis_gemm_kernel
