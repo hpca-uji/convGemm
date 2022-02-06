@@ -5,3 +5,6 @@ test.dat
 test.out
 test_gemm
 tags
+.idea
+cmake-build*
+build/*

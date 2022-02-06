@@ -1,4 +1,5 @@
-static inline void sgemm(char transa, char transb, int m, int n, int k, float alpha, float *a, int lda, float *b, int ldb, float beta, float *c, int ldc) {
+static inline void sgemm(char transa, char transb, int m, int n, int k, float alpha, float *a, int lda, float *b,
+                         int ldb, float beta, float *c, int ldc) {
 #if 0
     sgemm_(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
 #else
@@ -11,8 +12,7 @@ static inline void sgemm(char transa, char transb, int m, int n, int k, float al
 static inline float *random_alloc(int n)
 {
     float *a = malloc(n * sizeof(float));
-    for (int i = 0; i < n; i++)
-        a[i] = (float)rand() / RAND_MAX;
+    for (int i = 0; i < n; i++) { a[i] = (float) rand() / (float) RAND_MAX; }
     return a;
 }
 
@@ -50,14 +50,13 @@ static inline bool check(int n, float *a, float *b)
     float alpha = 1.0; \
     float beta = 0.0; \
  \
-    bli_init(); \
-    cntx_t *cntx = bli_gks_query_cntx(); \
+    gemm_blis_init();   \
     bli_thread_set_num_threads(omp_get_max_threads()); \
     int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1; \
     int wo = (w + 2 * hpadding - hdilation * (kw - 1) - 1) / hstride + 1; \
     int MC, NC, KC; \
-    gemm_blis_workspace(cntx, 0, 0, 0, &MC, &NC, &KC); \
+    gemm_blis_workspace(blis_cntx, 0, 0, 0, &MC, &NC, &KC); \
     float *ac_pack = aligned_alloc(4096, omp_get_max_threads() * MC * KC * sizeof(float)); \
     float *bc_pack = aligned_alloc(4096, omp_get_max_threads() * KC * NC * sizeof(float)); \
     printf("# %d %d %d %d %d %d %d %d %d %d %d %d %d\n", b, h, w, c, kn, kh, kw, vpadding, hpadding, vstride, hstride, vdilation, hdilation); \
-    convol_dim dim = { b, h, w, c, kn, kh, kw, vstride, hstride, vpadding, hpadding, vdilation, hdilation, ho, wo };
+    conv_p dim = { b, h, w, c, kn, kh, kw, vstride, hstride, vpadding, hpadding, vdilation, hdilation, ho, wo };

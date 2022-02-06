@@ -3,55 +3,68 @@
 #include <stdlib.h>
 
 #include <omp.h>
+
 #define BLIS_DISABLE_BLAS_DEFS
-#include <blis.h>
 
-#include "gemm_blis.h"
+#include <blis/blis.h>
 
-void sgemm_(char *transa, char *transb, int *m, int *n, int *k, float *alpha, const float *a, int *lda, const float *b, int *ldb, float *beta, float *c, int *ldc);
+#include "../src/gemm_blis.h"
 
-static inline void sgemm(char transa, char transb, int m, int n, int k, float alpha, const float *a, int lda, const float *b, int ldb, float beta, float *c, int ldc) {
+
+/* Makefile part related to this test
+ *
+ * rungemm: test_gemm test.in
+ * rm -fr test_gemm_nchw.out test_gemm_nhwc.out
+ * while read line; do echo $$line; for j in 1 2 3; do ./test_gemm nchw 3 $$line >> test_gemm_nchw.out || exit; done; done < test.in
+ * while read line; do echo $$line; for j in 1 2 3; do ./test_gemm nhwc 3 $$line >> test_gemm_nhwc.out || exit; done; done < test.in
+*/
+
+
+void sgemm_(char *transa, char *transb, int *m, int *n, int *k, float *alpha, const float *a, int *lda, const float *b,
+            int *ldb, float *beta, float *c, int *ldc);
+
+static inline void
+sgemm(char transa, char transb, int m, int n, int k, float alpha, const float *a, int lda, const float *b, int ldb,
+      float beta, float *c, int ldc) {
     sgemm_(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
 }
 
-void fill_rand(float *a, int n)
-{
+void fill_rand(float *a, int n) {
     for (int i = 0; i < n; i++)
-        a[i] = rand() * 1.0 / RAND_MAX;
+        a[i] = (float) rand() * (float) 1.0 / (float) RAND_MAX;
 }
 
-float diff(int n, const float *Cref, const float *C)
-{
-    float maxdiff = 0.0, cref_diff = 0.0, c_diff = 0.0;
+float diff(int n, const float *Cref, const float *C) {
+    float max_diff = (float) 0.0, cref_diff = (float) 0.0;
+    // float c_diff = (float) 0.0;
     for (int i = 0; i < n; i++) {
-        float d = fabs(Cref[i] - C[i]);
-        if (d > maxdiff) {
-            maxdiff = d;
+        float d = (float) fabs((double) Cref[i] - C[i]);
+        if (d > max_diff) {
+            max_diff = d;
             cref_diff = Cref[i];
-            c_diff = C[i];
+            // c_diff = C[i];
         }
     }
-    // printf("=== %e %e %e ===\n", cref_diff, c_diff, maxdiff);
-    if (cref_diff == 0.0) return maxdiff;
-    else return maxdiff / cref_diff;
+    // printf("=== %e %e %e ===\n", cref_diff, c_diff, max_diff);
+    if (cref_diff == 0.0) return max_diff;
+    else return max_diff / cref_diff;
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     int m, n, k, rep;
     if (strcmp(argv[1], "nchw") == 0 || strcmp(argv[1], "nhwc") == 0) {
         rep = atoi(argv[2]);
-        int b   = atoi(argv[3]);
-        int h   = atoi(argv[4]);
-        int w   = atoi(argv[5]);
-        int c   = atoi(argv[6]);
-        int kn  = atoi(argv[7]);
-        int kh  = atoi(argv[8]);
-        int kw  = atoi(argv[9]);
-        int vpadding  = argc > 10 ? atoi(argv[10]) : 1;
-        int hpadding  = argc > 11 ? atoi(argv[11]) : 1;
-        int vstride   = argc > 12 ? atoi(argv[12]) : 1;
-        int hstride   = argc > 13 ? atoi(argv[13]) : 1;
+        int b = atoi(argv[3]);
+        int h = atoi(argv[4]);
+        int w = atoi(argv[5]);
+        int c = atoi(argv[6]);
+        int kn = atoi(argv[7]);
+        int kh = atoi(argv[8]);
+        int kw = atoi(argv[9]);
+        int vpadding = argc > 10 ? atoi(argv[10]) : 1;
+        int hpadding = argc > 11 ? atoi(argv[11]) : 1;
+        int vstride = argc > 12 ? atoi(argv[12]) : 1;
+        int hstride = argc > 13 ? atoi(argv[13]) : 1;
         int vdilation = argc > 14 ? atoi(argv[14]) : 1;
         int hdilation = argc > 15 ? atoi(argv[15]) : 1;
         int ho = (h + 2 * vpadding - vdilation * (kh - 1) - 1) / vstride + 1;
@@ -67,10 +80,10 @@ int main(int argc, char *argv[])
     }
 
     bli_init();
-    cntx_t* cntx = bli_gks_query_cntx();
-    sgemm_ukr_ft gemm_kernel = bli_cntx_get_l3_nat_ukr_dt      (BLIS_FLOAT, BLIS_GEMM, cntx);
-    int MR                   = bli_cntx_get_blksz_def_dt       (BLIS_FLOAT, BLIS_MR,   cntx);
-    int NR                   = bli_cntx_get_blksz_def_dt       (BLIS_FLOAT, BLIS_NR,   cntx);
+    cntx_t *cntx = bli_gks_query_cntx();
+    // sgemm_ukr_ft gemm_kernel = bli_cntx_get_l3_nat_ukr_dt      (BLIS_FLOAT, BLIS_GEMM, cntx);
+    int MR = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MR, cntx);
+    int NR = bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NR, cntx);
     // int PACKMR               = bli_cntx_get_blksz_max_dt       (BLIS_FLOAT, BLIS_MR,   cntx);
     // int PACKNR               = bli_cntx_get_blksz_max_dt       (BLIS_FLOAT, BLIS_NR,   cntx);
     // bool row_pref            = bli_cntx_get_l3_nat_ukr_prefs_dt(BLIS_FLOAT, BLIS_GEMM, cntx);
@@ -116,8 +129,8 @@ int main(int argc, char *argv[])
     float *Ac = aligned_alloc(4096, omp_get_max_threads() * MC * KC * sizeof(float));
     float *Bc = aligned_alloc(4096, omp_get_max_threads() * KC * NC * sizeof(float));
 
-    float alpha = 1.0;
-    float beta = 0.0;
+    float alpha = (float) 1.0;
+    float beta = (float) 0.0;
 
     for (int i = 0; i < rep; i++) {
 #ifdef BENCHMARK
@@ -129,14 +142,25 @@ int main(int argc, char *argv[])
         sgemm('N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, Cref, m);
         double t2 = get_time();
         bli_sgemm(BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, m, n, k, &alpha, A, 1, m, B, 1, k, &beta, C1, 1, m);
+
+        printf("After bli_sgemm\n");
+
         double t3 = get_time();
-        gemm_blis_B3A2C0_orig('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C2, m, Ac, pack_RB, Bc, pack_CB, NULL, cntx, NULL);
+        gemm_blis_B3A2C0_orig('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C2, m, Ac, pack_RB, Bc, pack_CB,
+                              NULL, cntx, NULL);
+
+        printf("After gemm_blis_B3A2C0_orig\n");
+
         double t4 = get_time();
-        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C3, m, Ac, pack_RB, Bc, pack_CB, NULL, cntx, NULL);
+        gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N', m, n, k, 1.0, A, m, B, k, 0.0, C3, m, Ac, pack_RB, Bc, pack_CB, NULL,
+                         cntx, NULL);
+
+        printf("After gemm_blis_B3A2C0\n");
+
         double t5 = get_time();
 
         printf("%d %d %d ", m, n, k);
-        printf("%e ",  diff(m * n, Cref, C2));
+        printf("%e ", diff(m * n, Cref, C2));
         printf("%e\t", diff(m * n, Cref, C3));
         printf("%e %e %e %e\t", t2 - t1, t3 - t2, t4 - t3, t5 - t4);
         double gflop = 2.0 * m * n * k * 1e-9;

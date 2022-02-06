@@ -186,14 +186,14 @@ void gemm_blis_B3A2C0(char orderA, char orderB, char orderC,
                       float *Ac, pack_func pack_RB,
                       float *Bc, pack_func pack_CB,
                       float *Cc, post_func postprocess,
-                      cntx_t *cntx, const convol_dim *dim,
+                      cntx_t *cntx, const conv_p *conv_params,
                       const float *bias_vector)
 
 typedef struct {
-    int batch, height, width, channel, kn, kheight, kwidth,
+    int batches, height, width, channels, kn, kheight, kwidth,
     vstride, hstride, vpadding, hpadding, vdilation, hdilation,
     oheight, owidth;
-} convol_dim;
+} conv_p;
 \end{lstlisting}
 \end{frame}
 
@@ -201,12 +201,12 @@ typedef struct {
 \begin{lstlisting}[language=C,basicstyle=\scriptsize\ttfamily]
 typedef void (*pack_func)(char orderM, char transM, int mc, int nc,
                           const float *M, int ldM, float *Mc, int RR,
-                          const convol_dim *dim,
+                          const conv_p *conv_params,
                           int start_row, int start_col);
 
 typedef void (*post_func)(int mr, int nr, const float *Cc, int ldCc,
                           float beta, float *C, int ldC,
-                          const convol_dim *dim,
+                          const conv_p *conv_params,
                           const float *bias_vector,
                           int start_row, int start_col, bool last);
 \end{lstlisting}
@@ -220,7 +220,7 @@ gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N',
                  beta, out, ho * wo * b,
                  ac_pack, pack_RB_nchw, bc_pack, pack_CB,
                  cc_pack, add_bias_transpose_nchw,
-                 cntx, &dim, bias_vector);
+                 cntx, &conv_params, bias_vector);
 
 gemm_blis_B3A2C0('C', 'C', 'C', 'T', 'N',
                  kh * kw * c, kn, ho * wo * b,
@@ -228,7 +228,7 @@ gemm_blis_B3A2C0('C', 'C', 'C', 'T', 'N',
                  beta, kernel, kh * kw * c,
                  ac_pack, pack_RB_nchw, bc_pack, pack_CB_nchw_trans,
                  cc_pack, NULL,
-                 cntx, &dim, NULL);
+                 cntx, &conv_params, NULL);
 
 gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T',
                  b * ho * wo, c * kh * kw, kn,
@@ -236,7 +236,7 @@ gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T',
                  c * kh * kw, 1.0, image, b * ho * wo,
                  ac_pack, pack_RB_nchw_trans, bc_pack, pack_CB,
                  cc_pack, post_col2im_nchw,
-                 cntx, &dim, NULL);
+                 cntx, &conv_params, NULL);
 \end{lstlisting}
 \end{frame}
 
@@ -276,7 +276,7 @@ gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'N',
                  beta, out, kn,
                  ac_pack, pack_RB, bc_pack, pack_CB_nhwc,
                  cc_pack, add_bias_nhwc,
-                 cntx, &dim, bias_vector);
+                 cntx, &conv_params, bias_vector);
 
 gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T',
                  kn, kh * kw * c, ho * wo * b,
@@ -284,7 +284,7 @@ gemm_blis_B3A2C0('C', 'C', 'C', 'N', 'T',
                  beta, kernel, kn,
                  ac_pack, pack_RB, bc_pack, pack_CB_nhwc,
                  cc_pack, NULL,
-                 cntx, &dim, NULL);
+                 cntx, &conv_params, NULL);
 
 gemm_blis_B3A2C0('C', 'C', 'C', 'T', 'N',
                  c * kh * kw, ho * wo * b, kn,
@@ -292,7 +292,7 @@ gemm_blis_B3A2C0('C', 'C', 'C', 'T', 'N',
                  1.0, image, c * kh * kw,
                  ac_pack, pack_RB, bc_pack, pack_CB,
                  cc_pack, post_row2im_nhwc,
-                 cntx, &dim, NULL);
+                 cntx, &conv_params, NULL);
 \end{lstlisting}
 \end{frame}
 
