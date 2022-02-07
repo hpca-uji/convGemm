@@ -47,62 +47,62 @@ void gemm_blis_A3B2C0(char orderA, char orderB, char orderC,
         return;
 
     // Get Gemm BLIS blocks sizes
-    int MR, NR, MC, NC, KC;
-    gemm_blis_blocks_sizes(m, n, k, &MR, &NR, &MC, &NC, &KC);
+    int MR_bs, NR_bs, MC_bs, NC_bs, KC_bs;
+    gemm_blis_blocks_sizes(m, n, k, &MR_bs, &NR_bs, &MC_bs, &NC_bs, &KC_bs);
 
 #include "quick_gemm.h"
 
-    for (int ic = 0; ic < m; ic += MC) {
-        int mc = min(m - ic, MC);
+    for (int ic = 0; ic < m; ic += MC_bs) {
+        int mc = min(m - ic, MC_bs);
 
-        for (int pc = 0; pc < k; pc += KC) {
-            int kc = min(k - pc, KC);
-            bool last = (pc + KC) >= k;
+        for (int pc = 0; pc < k; pc += KC_bs) {
+            int kc = min(k - pc, KC_bs);
+            bool last = (pc + KC_bs) >= k;
 
-            pack_RB(orderA, transA, mc, kc, A, ldA, Ac, MR, conv_params, ic, pc);
+            pack_RB(orderA, transA, mc, kc, A, ldA, Ac, MR_bs, conv_params, ic, pc);
 
             float betaI = (pc == 0) ? beta : 1.0;
 
 #pragma omp parallel for
-            for (int jc = 0; jc < n; jc += NC) {
-                int nc = min(n - jc, NC);
+            for (int jc = 0; jc < n; jc += NC_bs) {
+                int nc = min(n - jc, NC_bs);
 
                 int tid = omp_get_thread_num();
 
-                pack_CB(orderB, transB, kc, nc, B, ldB, Bc + tid * NC * KC, NR, conv_params, pc, jc);
+                pack_CB(orderB, transB, kc, nc, B, ldB, Bc + tid * NC_bs * KC_bs, NR_bs, conv_params, pc, jc);
 
-                for (int ir = 0; ir < mc; ir += MR) {
-                    for (int jr = 0; jr < nc; jr += NR) {
+                for (int ir = 0; ir < mc; ir += MR_bs) {
+                    for (int jr = 0; jr < nc; jr += NR_bs) {
 
-                        int mr = min(mc - ir, MR);
-                        int nr = min(nc - jr, NR);
+                        int mr = min(mc - ir, MR_bs);
+                        int nr = min(nc - jr, NR_bs);
 
                         float *Cptr = (orderC == 'C') ? &Ccol(ic + ir, jc + jr) : &Crow(ic + ir, jc + jr);
-                        float Clocal[MR * NR];
+                        float Clocal[MR_bs * NR_bs];
                         auxinfo_t aux = {0};
-                        bli_auxinfo_set_next_a(&Ac[(ir + MR) * kc], &aux);
-                        bli_auxinfo_set_next_b(&Bc[tid * NC * KC + (jr + NR) * kc], &aux);
+                        bli_auxinfo_set_next_a(&Ac[(ir + MR_bs) * kc], &aux);
+                        bli_auxinfo_set_next_b(&Bc[tid * NC_bs * KC_bs + (jr + NR_bs) * kc], &aux);
 
 #if BLIS_ABI_VERSION == 3
-                        if (postprocess == NULL && nr == NR && mr == MR) { // don't use buffer
+                        if (postprocess == NULL && nr == NR_bs && mr == MR_bs) { // don't use buffer
 #elif BLIS_ABI_VERSION == 4
                         if (postprocess == NULL) { // don't use buffer
 #else
 #pragma message "Specified BLIS_ABI_VERSION not supported!"
 #endif
                             gemm_kernel(mr, nr,
-                                        kc, &alpha, &Ac[ir * kc], &Bc[tid * NC * KC + jr * kc], &betaI, Cptr, 1, ldC,
+                                        kc, &alpha, &Ac[ir * kc], &Bc[tid * NC_bs * KC_bs + jr * kc], &betaI, Cptr, 1, ldC,
                                         &aux, cntx);
                         } else { // use buffer for border elements (BLIS3) or postprocessing
                             gemm_kernel(mr, nr,
-                                        kc, &alpha, &Ac[ir * kc], &Bc[tid * NC * KC + jr * kc], &zero, Clocal, 1, MR,
+                                        kc, &alpha, &Ac[ir * kc], &Bc[tid * NC_bs * KC_bs + jr * kc], &zero, Clocal, 1, MR_bs,
                                         &aux, cntx);
 #if BLIS_ABI_VERSION == 3
                             if (postprocess == NULL) {
-                                sxpbyM(mr, nr, Clocal, MR, betaI, Cptr, ldC);
+                                sxpbyM(mr, nr, Clocal, MR_bs, betaI, Cptr, ldC);
                             } else {
 #endif
-                            postprocess(mr, nr, Clocal, MR, betaI, C, ldC, conv_params, ic + ir, jc + jr, last);
+                            postprocess(mr, nr, Clocal, MR_bs, betaI, C, ldC, conv_params, ic + ir, jc + jr, last);
 #if BLIS_ABI_VERSION == 3
                             }
 #endif

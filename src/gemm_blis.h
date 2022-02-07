@@ -179,10 +179,10 @@ inline static void gemm_blis_workspace(cntx_t *cntx, int m, int n, int k, int *M
 #endif
 }
 
-inline static void gemm_blis_blocks_sizes(int m, int n, int k, int *MR, int *NR, int *MC, int *NC, int *KC) {
-    *MR = (int) bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MR, blis_cntx);
-    *NR = (int) bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NR, blis_cntx);
-    gemm_blis_workspace(blis_cntx, m, n, k, MC, NC, KC);
-    *MC -= *MC % *MR;
-    *NC -= *NC % *NR;
+inline static void gemm_blis_blocks_sizes(int m, int n, int k, int *MR_bs, int *NR_bs, int *MC_bs, int *NC_bs, int *KC_bs) {
+    *MR_bs = (int) bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MR, blis_cntx);
+    *NR_bs = (int) bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NR, blis_cntx);
+    gemm_blis_workspace(blis_cntx, m, n, k, MC_bs, NC_bs, KC_bs);
+    *MC_bs -= *MC_bs % *MR_bs;
+    *NC_bs -= *NC_bs % *NR_bs;
 }
