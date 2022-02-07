@@ -17,7 +17,6 @@
  * limitations under the License.
 */
 
-#include <bits/types/struct_timespec.h>
 #include <time.h>
 #include <stdbool.h>
 #include <blis/blis.h>
@@ -148,15 +147,15 @@ inline static int model_level(double NL, double CL, double WL, double Sdata, dou
     return (int) floor(CAr * NL * CL / (m * Sdata));
 }
 
-inline static void gemm_blis_workspace(cntx_t *cntx, int m, int n, int k, int *MC, int *NC, int *KC) {
+inline static void gemm_blis_workspace(cntx_t *cntx, int m, int n, int k, int *MC_bs, int *NC_bs, int *KC_bs) {
 #if 1
-    *MC = (int) bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MC, cntx);
-    *NC = (int) bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NC, cntx);
-    *KC = (int) bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_KC, cntx);
+    *MC_bs = (int) bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MC, cntx);
+    *NC_bs = (int) bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NC, cntx);
+    *KC_bs = (int) bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_KC, cntx);
 #else
-    // *NC = 3072;
-    // *KC = 368; //640
-    // *MC = 560; //120
+    // *NC_bs = 3072;
+    // *KC_bs = 368; //640
+    // *MC_bs = 560; //120
     int MR = (int) bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MR, cntx);
     int NR = (int) bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NR, cntx);
     int Sdata=4;
@@ -164,18 +163,18 @@ inline static void gemm_blis_workspace(cntx_t *cntx, int m, int n, int k, int *M
     int SL2=1*1024*1024, WL2=16, NL2 = 2048, CL2 = SL2 / (WL2 * NL2);
     int SL3=4*1024*1024, WL3=16, NL3 = 4096, CL3 = SL3 / (WL3 * NL3);
 
-    *KC = model_level(NL1, CL1, WL1, Sdata, MR, NR);
-    if (k > 0 && *KC > k) *KC = k;
+    *KC_bs = model_level(NL1, CL1, WL1, Sdata, MR, NR);
+    if (k > 0 && *KC_bs > k) *KC_bs = k;
 
-    *MC = model_level(NL2, CL2, WL2, Sdata, *KC, NR);
-    if (m > 0 && *MC > m) *MC = m;
-    *MC = *MC - *MC % MR;
-    if (*MC < MR) *MC = MR;
+    *MC_bs = model_level(NL2, CL2, WL2, Sdata, *KC_bs, NR);
+    if (m > 0 && *MC_bs > m) *MC_bs = m;
+    *MC_bs = *MC_bs - *MC_bs % MR;
+    if (*MC_bs < MR) *MC_bs = MR;
 
-    *NC = model_level(NL3, CL3, WL3, Sdata, *KC, *MC);
-    // if (n > 0 && *NC > n) *NC = n;
-    // *MC = 448; *NC = 1020; *KC = 512;
-    // printf("m=%d n=%d k=%d MC=%d NC=%d KC=%d\n", m, n, k, *MC, *NC, *KC);
+    *NC_bs = model_level(NL3, CL3, WL3, Sdata, *KC_bs, *MC_bs);
+    // if (n > 0 && *NC_bs > n) *NC_bs = n;
+    // *MC_bs = 448; *NC_bs = 1020; *KC_bs = 512;
+    // printf("m=%d n=%d k=%d MC_bs=%d NC_bs=%d KC_bs=%d\n", m, n, k, *MC_bs, *NC_bs, *KC_bs);
 #endif
 }
 
