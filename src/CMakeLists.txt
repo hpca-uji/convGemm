@@ -14,7 +14,7 @@ target_link_libraries(convGemm PUBLIC ${BLIS_LIBRARY} OpenMP::OpenMP_CXX)
 # Add compile options for convGemm library and propagate them to dependant targets (PUBLIC option)
 target_compile_options(convGemm PUBLIC
         -Ofast -mtune=native -march=native
-        -ftree-vectorize -fopt-info-vec-optimized
+        -ftree-vectorize
         -fopenmp
         -D BLIS_ABI_VERSION=${BLIS_ABI_VERSION}
         -Wall
