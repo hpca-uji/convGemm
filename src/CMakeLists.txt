@@ -9,7 +9,7 @@ add_library(convGemm SHARED convGemm.c)
 target_sources(convGemm PRIVATE ${COMMON_SOURCES})
 
 # Add link to the Blis library and propagate this link requirement to dependant targets (PUBLIC option)
-target_link_libraries(convGemm PUBLIC ${BLIS_LIBRARY} OpenMP::OpenMP_CXX)
+target_link_libraries(convGemm PUBLIC ${BLIS_LIBRARY} OpenMP::OpenMP_C)
 
 # Add compile options for convGemm library and propagate them to dependant targets (PUBLIC option)
 target_compile_options(convGemm PUBLIC
