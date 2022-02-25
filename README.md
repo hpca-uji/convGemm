@@ -1,21 +1,21 @@
-convGemmNHWC
+convGemm
 ============
 
-The convGemmNHWC library performs the convolution operation using an implicit im2row or im2col over a GEMM operation
+The convGemm library performs the convolution operation using an implicit im2row or im2col over a GEMM operation
 with matrices in either the NHWC or NCHW format, respectively.
 
 
 Compilation and installation
 ----------------------------
 
-To compile and install the convGemmNHWC library, the BLIS library should be installed on the system following the next
+To compile and install the convGemm library, the BLIS library should be installed on the system following the next
 structure:
 
     BLIS_INSTALL_PREFIX
     |-- include/blis/blis.h
     `-- lib/libblis.so
 
-Once the BLIS library is installed, the next commands should be executed to compile and install the convGemmNHWC
+Once the BLIS library is installed, the next commands should be executed to compile and install the convGemm
 library:
 
 ```shell
