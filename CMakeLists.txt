@@ -1,8 +1,8 @@
-# convGemmNHWC CMakeLists.txt
+# convGemm CMakeLists.txt
 
 cmake_minimum_required(VERSION 3.13)
 
-project(ConvGemmNHWC VERSION 1.0 LANGUAGES C)
+project(ConvGemm VERSION 1.0 LANGUAGES C)
 
 find_package(OpenMP REQUIRED)
 
