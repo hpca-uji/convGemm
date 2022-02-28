@@ -1,5 +1,5 @@
 /**
- * This file is part of convGemmNHWC
+ * This file is part of convGemm
  *
  * Copyright (C) 2021-22 Universitat Politècnica de València and
  *                       Universitat Jaume I
