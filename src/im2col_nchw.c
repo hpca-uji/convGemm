@@ -394,7 +394,7 @@ void post_col2im_nchw(int n, int m, const float *restrict cols, int ldc, float b
     }
 }
 
-inline void
+static inline void
 add_bias_transpose_nchw_inline(int mr, int nr, const float *restrict Cc, int ldCc, float beta, float *restrict C,
                                int ldC, const conv_p *conv_params, int start_row, int start_col, bool last, bool bias,
                                bool batchnorm, bool relu) {
