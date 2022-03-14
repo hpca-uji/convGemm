@@ -266,7 +266,7 @@ void post_row2im_nhwc(int m, int n, const float *restrict rows, int ldr, float b
     }
 }
 
-inline void add_bias_bn_relu_nhwc_inline(int mr, int nr, const float *restrict Cc, int ldCc, float beta,
+static inline void add_bias_bn_relu_nhwc_inline(int mr, int nr, const float *restrict Cc, int ldCc, float beta,
                                          float *restrict C, int ldC, const conv_p *conv_params,
                                          int start_row, int start_col) {
     for (int j = 0; j < nr; j++) {
@@ -284,7 +284,7 @@ inline void add_bias_bn_relu_nhwc_inline(int mr, int nr, const float *restrict C
     }
 }
 
-inline void add_bias_bn_nhwc_inline(int mr, int nr, const float *restrict Cc, int ldCc, float beta,
+static inline void add_bias_bn_nhwc_inline(int mr, int nr, const float *restrict Cc, int ldCc, float beta,
                                     float *restrict C, int ldC, const conv_p *conv_params,
                                     int start_row, int start_col) {
     for (int j = 0; j < nr; j++) {
@@ -301,7 +301,7 @@ inline void add_bias_bn_nhwc_inline(int mr, int nr, const float *restrict Cc, in
     }
 }
 
-inline void add_bias_relu_nhwc_inline(int mr, int nr, const float *restrict Cc, int ldCc, float beta,
+static inline void add_bias_relu_nhwc_inline(int mr, int nr, const float *restrict Cc, int ldCc, float beta,
                                       float *restrict C, int ldC, const conv_p *conv_params,
                                       int start_row, int start_col) {
     for (int j = 0; j < nr; j++) {
@@ -317,7 +317,7 @@ inline void add_bias_relu_nhwc_inline(int mr, int nr, const float *restrict Cc, 
     }
 }
 
-inline void add_bias_nhwc_inline(int mr, int nr, const float *restrict Cc, int ldCc, float beta, float *restrict C,
+static inline void add_bias_nhwc_inline(int mr, int nr, const float *restrict Cc, int ldCc, float beta, float *restrict C,
                                  int ldC, const conv_p *conv_params, int start_row, int start_col) {
     for (int j = 0; j < nr; j++) {
         const float *in = Cc + j * ldCc;

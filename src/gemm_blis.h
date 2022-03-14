@@ -62,7 +62,7 @@ typedef struct {
 
 void gemm_blis_init();
 
-inline void gemm_kernel(dim_t m, dim_t n, dim_t k, float *restrict alpha, float *restrict a, float *restrict b,
+static inline void gemm_kernel(dim_t m, dim_t n, dim_t k, float *restrict alpha, float *restrict a, float *restrict b,
                         float *restrict beta, float *restrict c, inc_t rs_c0, inc_t cs_c0,
                         auxinfo_t *restrict data, cntx_t *restrict cntx) {
 #if BLIS_ABI_VERSION == 3
@@ -136,7 +136,7 @@ void sxpbyM(int, int, const float *, int, float, float *, int);
  * @param n Second dimension of block in a higher level of cache
  * @return k, such that a block of size k x n will stays in this level of the cache
  */
-inline static int model_level(double NL, double CL, double WL, double Sdata, double m, double n) {
+static inline int model_level(double NL, double CL, double WL, double Sdata, double m, double n) {
     double CAr = floor((WL - 1) / (1 + n / m)); // Lines of each set for Ar
     if (CAr == 0) { // Special case
         CAr = 1;
@@ -147,7 +147,7 @@ inline static int model_level(double NL, double CL, double WL, double Sdata, dou
     return (int) floor(CAr * NL * CL / (m * Sdata));
 }
 
-inline static void gemm_blis_workspace(cntx_t *cntx, int m, int n, int k, int *MC_bs, int *NC_bs, int *KC_bs) {
+static inline void gemm_blis_workspace(cntx_t *cntx, int m, int n, int k, int *MC_bs, int *NC_bs, int *KC_bs) {
 #if 1
     *MC_bs = (int) bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MC, cntx);
     *NC_bs = (int) bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NC, cntx);
@@ -178,7 +178,7 @@ inline static void gemm_blis_workspace(cntx_t *cntx, int m, int n, int k, int *M
 #endif
 }
 
-inline static void gemm_blis_blocks_sizes(int m, int n, int k, int *MR_bs, int *NR_bs, int *MC_bs, int *NC_bs, int *KC_bs) {
+static inline void gemm_blis_blocks_sizes(int m, int n, int k, int *MR_bs, int *NR_bs, int *MC_bs, int *NC_bs, int *KC_bs) {
     gemm_blis_init();
     *MR_bs = (int) bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_MR, blis_cntx);
     *NR_bs = (int) bli_cntx_get_blksz_def_dt(BLIS_FLOAT, BLIS_NR, blis_cntx);

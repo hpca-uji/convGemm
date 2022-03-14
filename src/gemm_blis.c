@@ -26,7 +26,7 @@ int blis_abi_version = BLIS_ABI_VERSION;
 /*
  * Initializes BLIS, blis_cntx and blis_gemm_kernel
  */
-inline void gemm_blis_init() {
+static inline void gemm_blis_init() {
     if (blis_cntx == NULL) {
         bli_init();
         blis_cntx = bli_gks_query_cntx();
