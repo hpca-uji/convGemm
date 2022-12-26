@@ -30,7 +30,7 @@ void gemm_blis_init() {
     if (blis_cntx == NULL) {
         bli_init();
         blis_cntx = bli_gks_query_cntx();
-        blis_gemm_kernel = bli_cntx_get_l3_vir_ukr_dt(BLIS_FLOAT, BLIS_GEMM, blis_cntx);
+        blis_gemm_kernel = bli_cntx_get_l3_vir_ukr_dt(BLIS_FLOAT, BLIS_GEMM_UKR, blis_cntx);
     }
 }
 
