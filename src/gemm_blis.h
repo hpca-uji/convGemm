@@ -20,6 +20,7 @@
 #include <time.h>
 #include <stdbool.h>
 #include <blis/blis.h>
+#include <omp.h>
 
 #define min(a, b) (((a)<(b))?(a):(b))
 #define max(a, b) (((a)>(b))?(a):(b))
